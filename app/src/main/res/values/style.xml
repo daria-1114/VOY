@@ -1,0 +1,7 @@
+<resources>
+    <style name="HeaderTitleStyle" parent="TextAppearance.AppCompat.Large">
+        <item name="android:fontFamily">@font/prop_single</item>
+        <item name="android:textColor">@android:color/black</item>
+        <item name="android:textSize">30sp</item>
+    </style>
+</resources>
