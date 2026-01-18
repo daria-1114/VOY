@@ -1,7 +1,6 @@
 package com.example.voy.activities;
 
 
-import android.content.Intent;
 import android.os.Bundle;
 import android.widget.Toast;
 
