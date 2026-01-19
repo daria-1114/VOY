@@ -1,5 +1,6 @@
 package com.example.voy.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.annotation.Nullable;
@@ -10,15 +11,24 @@ import androidx.viewpager2.widget.ViewPager2;
 import com.example.voy.R;
 import com.example.voy.adapters.ViewPagerAdapter;
 import com.google.android.material.tabs.TabLayout;
+import com.google.firebase.Firebase;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 
 public class LoginActivity extends AppCompatActivity {
 private TabLayout tabLayout;
 private ViewPager2 viewPager2;
 private ViewPagerAdapter adapter;
 
-
-@Override
+    @Override
 protected void onCreate(@Nullable Bundle savedInstanceState) {
+        FirebaseAuth auth = FirebaseAuth.getInstance();
+    FirebaseUser user = auth.getCurrentUser();
+    if(user!=null){
+        startActivity(new Intent(this, MainActivity.class));
+        finish();
+        return;
+    }
     super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_login);
     tabLayout = findViewById(R.id.tab_layout);

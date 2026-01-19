@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-
+    //alias(libs.plugins.kotlin.android)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -45,6 +45,9 @@ dependencies {
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("com.google.android.gms:play-services-maps:19.2.0")
+
     // For Java, use annotationProcessor instead of kapt
     annotationProcessor("androidx.room:room-compiler:2.6.1")
+    implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
+    implementation("com.google.firebase:firebase-auth")
 }
