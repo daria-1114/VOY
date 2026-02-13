@@ -2,7 +2,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item
         android:id="@+id/action_account"
-        android:icon="@drawable/outline_account_circle_24"
+        android:icon="@drawable/baseline_account_circle_24"
         android:title="Account"
         app:showAsAction="always" />
 </menu>
