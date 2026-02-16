@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.voy.R;
 import com.example.voy.dao.TravelEntryDao;
+import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 
@@ -26,7 +27,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         FloatingActionButton fab = findViewById(R.id.fabAddEntry);
-
+        MaterialToolbar toolbar = findViewById(R.id.headerToolbar);
+        toolbar.setNavigationOnClickListener(v->{
+            Intent intent = new Intent(this, MapsActivity.class);
+            startActivity(intent);
+        });
         fab.setOnClickListener(v ->{
             Intent intent = new Intent(MainActivity.this, TravelActivity.class);
             startActivity(intent);
@@ -36,11 +41,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        return super.onCreateOptionsMenu(menu);
 
     }
 }

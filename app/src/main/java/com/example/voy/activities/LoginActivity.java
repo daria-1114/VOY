@@ -22,6 +22,7 @@ private ViewPagerAdapter adapter;
 
     @Override
 protected void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
         FirebaseAuth auth = FirebaseAuth.getInstance();
     FirebaseUser user = auth.getCurrentUser();
     if(user!=null){
@@ -29,7 +30,6 @@ protected void onCreate(@Nullable Bundle savedInstanceState) {
         finish();
         return;
     }
-    super.onCreate(savedInstanceState);
     setContentView(R.layout.activity_login);
     tabLayout = findViewById(R.id.tab_layout);
     viewPager2 = findViewById(R.id.view_pager);

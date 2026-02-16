@@ -22,10 +22,10 @@
         app:titleCentered="true"
         app:titleTextAppearance="@style/HeaderTitleStyle"
 
-        app:navigationIcon="@drawable/outline_add_location_24"
+        app:navigationIcon="@drawable/baseline_location_on_24"
         app:navigationContentDescription="Open map"
 
-        app:menu="@menu/header_menu"
+        app:menu="@menu/main_menu"
         />
 
 
@@ -65,8 +65,8 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="26dp"
-        android:layout_marginEnd="76dp"
-        android:layout_marginBottom="36dp"
+        android:layout_marginEnd="168dp"
+        android:layout_marginBottom="24dp"
         android:contentDescription="Add Entry"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
