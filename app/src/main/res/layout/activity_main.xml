@@ -4,7 +4,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/white"
+    android:background="@drawable/main_background"
     android:fitsSystemWindows="true"
     >
 
@@ -15,7 +15,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:background="@drawable/header_gradient"
+        android:background="@android:color/transparent"
         android:elevation="6dp"
 
         app:title="VOY"
@@ -39,7 +39,7 @@
         android:id="@+id/emptyMessage"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:text="No entries yet. Tap + to add your first trip!"
+        android:text="No active trip. Press Start Trip to start recording!"
         android:textSize="18sp"
         android:textStyle="bold"
         android:gravity="center"
@@ -52,24 +52,27 @@
         app:layout_constraintBottom_toBottomOf="parent"/>
 
     <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerViewEntries"
+        android:id="@+id/recyclerView"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/headerToolbar" />
+        app:layout_constraintTop_toBottomOf="@id/headerToolbar"
+        app:layout_constraintVertical_bias="0.0" />
 
-    <com.google.android.material.floatingactionbutton.FloatingActionButton
-        android:id="@+id/fabAddEntry"
+    <com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton
+        android:id="@+id/fabServiceToggle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_margin="26dp"
-        android:layout_marginEnd="168dp"
-        android:layout_marginBottom="24dp"
-        android:contentDescription="Add Entry"
+        android:text="Start Trip"
+        android:textColor="@android:color/white"
+        app:backgroundTint="#4B6405"
+        app:icon="@drawable/baseline_not_started_24"
+        app:iconTint="@android:color/white"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:srcCompat="@drawable/baseline_add_24" />
+        app:layout_constraintStart_toStartOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
