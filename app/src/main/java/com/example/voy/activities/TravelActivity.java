@@ -1,18 +1,12 @@
 package com.example.voy.activities;
 
 
-import static com.example.voy.R.drawable.baseline_arrow_back_24;
-
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.Menu;
-import android.view.MenuInflater;
 import android.view.MenuItem;
-import android.widget.ImageView;
 import android.widget.PopupMenu;
 
 import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.voy.R;
@@ -38,7 +32,7 @@ public class TravelActivity extends AppCompatActivity {
 
         private void showPopupMenu(MaterialToolbar toolbar) {
                 PopupMenu popupMenu = new PopupMenu(this, toolbar);
-                popupMenu.getMenuInflater().inflate(R.menu.popup_account, popupMenu.getMenu());
+                popupMenu.getMenuInflater().inflate(R.menu.popup_menu, popupMenu.getMenu());
                 popupMenu.setOnMenuItemClickListener(menuItem ->{
                         if (menuItem.getItemId() == R.id.LogOut_btn) {
                                 LogOut();

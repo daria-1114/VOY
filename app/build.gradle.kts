@@ -49,7 +49,8 @@ dependencies {
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("com.google.android.gms:play-services-maps:19.2.0")
-
+    implementation("androidx.lifecycle:lifecycle-livedata:2.8.7")
+    implementation("androidx.lifecycle:lifecycle-runtime:2.8.7")
     // For Java, use annotationProcessor instead of kapt
     annotationProcessor("androidx.room:room-compiler:2.6.1")
     implementation(platform("com.google.firebase:firebase-bom:32.7.4"))

@@ -10,7 +10,7 @@
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        android:background="@drawable/header_gradient"
+        android:background="@android:color/transparent"
         android:elevation="6dp"
 
         app:title="VOY"
