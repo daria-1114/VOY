@@ -29,4 +29,8 @@ public interface TripItemDao {
 
     @Query("SELECT COUNT(*) FROM trip_items WHERE userId = :userId AND tripId = :tripId AND localUri = :localUri")
     int countByTripAndLocalUri(String userId, String tripId, String localUri); //counts by uri to check if the item is not already in the table
+
+    @Query("DELETE FROM trip_items WHERE userId=:userId AND tripId=:tripId AND localUri=:localUri")
+    void deleteByTripAndLocalUri(String userId, String tripId, String localUri); // deletes by uri in case the item is deleted from the device
+
 }

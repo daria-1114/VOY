@@ -21,7 +21,7 @@ public interface TripDao {
     @Update
     void update(TripEntity trip);
     @Query("SELECT * FROM trips WHERE userId = :userId AND status = 'ACTIVE' ORDER BY startTime DESC LIMIT 1")
-    TripEntity getActiveTrip(String userId);
+    TripEntity getActiveTrip(String userId); // get the last active trip
     @Query("SELECT * FROM trips WHERE userId = :userId AND status = 'ACTIVE' ORDER BY startTime DESC LIMIT 1")
     LiveData<TripEntity> observeActiveTrip(String userId);
     @Query("SELECT * FROM trips WHERE userId = :userId ORDER BY startTime DESC")

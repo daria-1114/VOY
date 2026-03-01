@@ -27,14 +27,13 @@
 
 
         <TextView
-            android:id="@+id/tripDate"
+            android:id="@+id/tripDateRange"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="12 Feb 2025"
+            android:text="12 Feb - 14 Feb 2025"
             android:textSize="14sp"
             android:textColor="#777777"
             android:layout_marginTop="4dp" />
-
         <ImageButton
             android:id="@+id/btn_delete"
             android:layout_width="48dp"
