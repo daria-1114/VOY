@@ -62,7 +62,9 @@ public class MainActivity extends AppCompatActivity {
                 result -> {
                     boolean mediaOk;
                     boolean notifOk;
-
+                    boolean locOk;
+                    Boolean loc = result.get(Manifest.permission.ACCESS_FINE_LOCATION);
+                    locOk = (loc != null && loc);
                     if (Build.VERSION.SDK_INT >= 33) {
                         Boolean img = result.get(Manifest.permission.READ_MEDIA_IMAGES);
                         Boolean vid = result.get(Manifest.permission.READ_MEDIA_VIDEO);
@@ -71,19 +73,27 @@ public class MainActivity extends AppCompatActivity {
 
                         mediaOk = (img != null && img) || (vid != null && vid) || (aud != null && aud);
                         notifOk = (post != null && post);
+
                     } else {
                         Boolean ext = result.get(Manifest.permission.READ_EXTERNAL_STORAGE);
+
                         mediaOk = (ext != null && ext);
+
                         notifOk = true; // no notif runtime perm pre-33
                     }
-
-                    if (mediaOk && notifOk && pendingStartTrip != null) {
+                    if(mediaOk && notifOk && locOk && pendingStartTrip!= null){
                         pendingStartTrip.run();
                         pendingStartTrip = null;
-                    } else {
-                        Toast.makeText(this,
-                                "Please allow media + notifications so the trip can capture in the background.",
-                                Toast.LENGTH_LONG).show();
+                    }else{
+                        if (mediaOk && notifOk && pendingStartTrip != null) {
+                            pendingStartTrip.run();
+                            pendingStartTrip = null;
+                            Toast.makeText(this,"Location access not granted. Trip items will not have map locations.",Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(this,
+                                    "Please allow media + notifications so the trip can capture in the background.",
+                                    Toast.LENGTH_LONG).show();
+                        }
                     }
                 }
         );
@@ -248,6 +258,7 @@ public class MainActivity extends AppCompatActivity {
         finish();
     }
     private boolean hasAllTripPermissions() {
+        boolean loc = hasFineLocation();
         if (Build.VERSION.SDK_INT >= 33) {
             boolean img = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
                     == PackageManager.PERMISSION_GRANTED;
@@ -257,12 +268,12 @@ public class MainActivity extends AppCompatActivity {
                     == PackageManager.PERMISSION_GRANTED;
             boolean aud = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO)
                     == PackageManager.PERMISSION_GRANTED;
-
-            return (img || vid || aud) && post;
+            boolean mediaOk = (img || vid || aud);
+            return mediaOk && loc && post;
         } else {
             boolean ext = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
                     == PackageManager.PERMISSION_GRANTED;
-            return ext;
+            return ext && loc;
         }
     }
 
@@ -278,13 +289,18 @@ public class MainActivity extends AppCompatActivity {
                     Manifest.permission.READ_MEDIA_IMAGES,
                     Manifest.permission.READ_MEDIA_VIDEO,
                     Manifest.permission.READ_MEDIA_AUDIO,
-                    Manifest.permission.POST_NOTIFICATIONS
+                    Manifest.permission.POST_NOTIFICATIONS,
+                    Manifest.permission.ACCESS_FINE_LOCATION
             });
         } else {
             permLauncher.launch(new String[]{
-                    Manifest.permission.READ_EXTERNAL_STORAGE
+                    Manifest.permission.READ_EXTERNAL_STORAGE,
+                    Manifest.permission.ACCESS_FINE_LOCATION
             });
         }
+    }
+    private boolean hasFineLocation(){
+        return ContextCompat.checkSelfPermission(this,Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
