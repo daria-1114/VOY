@@ -1,6 +1,7 @@
 package com.example.voy.background;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -9,12 +10,14 @@ import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
+import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.provider.MediaStore;
 import android.util.Log;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.content.ContextCompat;
@@ -23,6 +26,12 @@ import com.example.voy.R;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
 import com.example.voy.enums.TripItemType;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.Priority;
+import com.google.android.gms.location.LocationRequest;
 
 import org.json.JSONObject;
 
@@ -48,6 +57,11 @@ public class TripForegroundService extends Service {
     private String tripId;
     private long tripStartTimeMs;
     private long lastScanDateAddedSec;
+    private FusedLocationProviderClient fusedClient;
+    private LocationCallback locationCallback;
+    private volatile Location lastLocation;
+    private volatile long lastLocationTimeMs = 0L;
+    private static final long LOCATION_FRESH_MS = 4 * 60_000L;
 
 
     private static final String TAG = "TripForegroundService";
@@ -58,6 +72,7 @@ public class TripForegroundService extends Service {
         tripRepository = new TripRepository(getApplicationContext());
         executor = Executors.newSingleThreadExecutor();
         createNotificationChannel();
+        fusedClient = LocationServices.getFusedLocationProviderClient(this);
     }
 
     @Override
@@ -78,6 +93,7 @@ public class TripForegroundService extends Service {
             lastScanDateAddedSec = (state.lastScanDateAddedSec > 0) ? state.lastScanDateAddedSec : startSec;
             Log.d(TAG, "Calling startForeground tripId=" + tripId);
             startForeground(NOTIF_ID, buildNotification("Resuming trip capture…"));
+            startLocationUpdatesIfPermitted();
             startMediaScanLoop();
             return START_STICKY;
         }
@@ -103,7 +119,7 @@ public class TripForegroundService extends Service {
             lastScanDateAddedSec = (state.lastScanDateAddedSec > 0) ? state.lastScanDateAddedSec : startSec;
 
             startForeground(NOTIF_ID, buildNotification("Capturing trip items…"));
-
+            startLocationUpdatesIfPermitted();
             startMediaScanLoop();
 
             return START_STICKY;
@@ -112,11 +128,55 @@ public class TripForegroundService extends Service {
             TripCaptureStateStore.clear(this);
             stopCapture();
             stopForeground(true);
+            stopLocationUpdates();
             stopSelf();
             return START_NOT_STICKY;
         }
         stopSelf();
         return START_NOT_STICKY;
+    }
+
+    private void stopLocationUpdates() {
+        if(fusedClient != null && locationCallback != null){
+            fusedClient.removeLocationUpdates(locationCallback);
+            locationCallback = null;
+        }
+    }
+
+    private void startLocationUpdatesIfPermitted() {
+        if(!canAccessLocation()){
+            Log.d(TAG, "location permission not granted. will store null lat/long");
+            return;
+        }
+        startLocationUpdates();
+    }
+   @SuppressLint("MissingPermission")
+    private void startLocationUpdates() {
+        if(fusedClient == null) return;
+        if(locationCallback != null) return;
+        LocationRequest req = LocationRequest.create();
+        req.setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY);
+        req.setInterval(30_000L);          // desired update interval
+        req.setFastestInterval(15_000L);   // fastest allowed
+        req.setSmallestDisplacement(25f);
+
+        locationCallback = new LocationCallback() {
+            @Override
+            public void onLocationResult(@NonNull LocationResult locationResult) {
+                Location loc = locationResult.getLastLocation();
+                if(loc != null){
+                    lastLocation = loc;
+                    lastLocationTimeMs = System.currentTimeMillis();
+                }
+            }
+        };
+        fusedClient.requestLocationUpdates(req, locationCallback, getMainLooper());
+        fusedClient.getLastLocation().addOnSuccessListener(loc ->{
+            if(loc != null){
+                lastLocation = loc;
+                lastLocationTimeMs = System.currentTimeMillis();
+            }
+        });
     }
 
     private void startMediaScanLoop() {
@@ -169,6 +229,10 @@ public class TripForegroundService extends Service {
                     == PackageManager.PERMISSION_GRANTED;
         }
         return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
+                == PackageManager.PERMISSION_GRANTED;
+    }
+    private boolean canAccessLocation(){
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED;
     }
     private void scanMediaStoreForNewItemsSafely() {
@@ -251,7 +315,15 @@ public class TripForegroundService extends Service {
                 long timestampMs = dateAddedSec * 1000L;
 
                 String metadataJson = buildMediaMetadata(mediaId, mime, type, durationMs);
-
+                Double lat = null;
+                Double lng = null;
+                if(canAccessLocation() && lastLocation!=null){
+                    long now = System.currentTimeMillis();
+                    if(now - lastLocationTimeMs <= LOCATION_FRESH_MS){
+                        lat = lastLocation.getLatitude();
+                        lng = lastLocation.getLongitude();
+                    }
+                }
                 TripItemEntity item = new TripItemEntity(
                         UUID.randomUUID().toString(),
                         tripId,
@@ -260,8 +332,8 @@ public class TripForegroundService extends Service {
                         timestampMs,
                         itemUri.toString(),
                         null,
-                        null,
-                        null,
+                        lat,
+                        lng,
                         null,
                         metadataJson
                 );
@@ -313,6 +385,7 @@ public class TripForegroundService extends Service {
     @Override
     public void onDestroy() {
         stopCapture();
+        stopLocationUpdates();
         executor.shutdownNow();
         super.onDestroy();
     }

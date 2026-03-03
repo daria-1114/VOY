@@ -49,6 +49,7 @@ dependencies {
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("com.google.android.gms:play-services-maps:19.2.0")
+    implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.lifecycle:lifecycle-livedata:2.8.7")
     implementation("androidx.lifecycle:lifecycle-runtime:2.8.7")
     implementation("com.github.bumptech.glide:glide:4.16.0")
