@@ -76,6 +76,10 @@ public class TripRepository {
         });
     }
 
+    public void updateTripTitle(String userId, String tripId, String newTitle) {
+        dbExecutor.execute(() -> tripDao.updateTripTitle(userId, tripId, newTitle));
+    }
+
     public interface ExistsCallback {
         void onResult(boolean exists);
     }

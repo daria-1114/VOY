@@ -33,5 +33,8 @@ public interface TripDao {
     @Query("UPDATE trips SET endTime= :endTime, status = 'FINISHED' WHERE id= :tripId AND userId= :userId")
     void finishTrip(String userId, String tripId, long endTime); //mark trip as finished
 
+    @Query("UPDATE trips SET title = :newTitle WHERE userId = :userId AND id = :tripId")
+    void updateTripTitle(String userId, String tripId, String newTitle);
+
 
 }

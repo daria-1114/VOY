@@ -8,6 +8,8 @@ import androidx.room.ForeignKey;
 import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
+import com.example.voy.enums.TripItemType;
+
 @Entity(tableName = "trip_items",
 foreignKeys = @ForeignKey(
         entity = TripEntity.class,
@@ -29,7 +31,7 @@ public class TripItemEntity {
     @NonNull
     public String userId;
     @NonNull
-    public String type;
+    public TripItemType type;
     public long timestamp;
     public String localUri;   // content:// or internal file
 
@@ -42,7 +44,7 @@ public class TripItemEntity {
     public TripItemEntity( @NonNull String id,
                            @NonNull String tripId,
                            @NonNull String userId,
-                           @NonNull String type,
+                           @NonNull TripItemType type,
                            long timestamp,
                            String localUri,
                            String remoteUrl,

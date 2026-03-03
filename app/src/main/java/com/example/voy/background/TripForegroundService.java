@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat;
 import com.example.voy.R;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
+import com.example.voy.enums.TripItemType;
 
 import org.json.JSONObject;
 
@@ -34,20 +35,15 @@ public class TripForegroundService extends Service {
 
     public static final String ACTION_START = "com.example.voy.action.START_TRIP";
     public static final String ACTION_STOP  = "com.example.voy.action.STOP_TRIP";
-
     public static final String EXTRA_USER_ID = "extra_user_id";
     public static final String EXTRA_TRIP_ID = "extra_trip_id";
     public static final String EXTRA_TRIP_START_TIME = "extra_trip_start_time";
-
     private static final String CHANNEL_ID = "trip_capture_channel";
     private static final int NOTIF_ID = 101;
-
     private TripRepository tripRepository;
-
     private ExecutorService executor;
     private Future<?> scanLoopFuture;
     private volatile boolean running = false;
-
     private String userId;
     private String tripId;
     private long tripStartTimeMs;
@@ -75,7 +71,6 @@ public class TripForegroundService extends Service {
                 stopSelf();
                 return START_NOT_STICKY;//after this the service doesn't restart, ONLY if the user presses start again
             }
-
             userId = state.userId;
             tripId = state.tripId;
             tripStartTimeMs = state.startTimeMs;
@@ -83,14 +78,10 @@ public class TripForegroundService extends Service {
             lastScanDateAddedSec = (state.lastScanDateAddedSec > 0) ? state.lastScanDateAddedSec : startSec;
             Log.d(TAG, "Calling startForeground tripId=" + tripId);
             startForeground(NOTIF_ID, buildNotification("Resuming trip capture…"));
-
             startMediaScanLoop();
-
             return START_STICKY;
         }
-
         String action = intent.getAction();
-
         if (ACTION_START.equals(action)) {
             String incomingUserId = intent.getStringExtra(EXTRA_USER_ID);
             String incomingTripId = intent.getStringExtra(EXTRA_TRIP_ID);
@@ -117,7 +108,6 @@ public class TripForegroundService extends Service {
 
             return START_STICKY;
         }
-
         if (ACTION_STOP.equals(action)) {
             TripCaptureStateStore.clear(this);
             stopCapture();
@@ -125,7 +115,6 @@ public class TripForegroundService extends Service {
             stopSelf();
             return START_NOT_STICKY;
         }
-
         stopSelf();
         return START_NOT_STICKY;
     }
@@ -138,7 +127,6 @@ public class TripForegroundService extends Service {
                 try {
                     // This method checks canReadImages/canReadVideos/canReadAudio internally
                     scanMediaStoreForNewItemsSafely();
-
                     Thread.sleep(90_000);
                 } catch (InterruptedException e) {
                     running = false;
@@ -196,7 +184,7 @@ public class TripForegroundService extends Service {
             maxSeen = Math.max(maxSeen, scanCollectionSince(
                     MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     sinceSec,
-                    "PHOTO",
+                    TripItemType.PHOTO,
                     null
             ));
         }
@@ -205,7 +193,7 @@ public class TripForegroundService extends Service {
             maxSeen = Math.max(maxSeen, scanCollectionSince(
                     MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
                     sinceSec,
-                    "VIDEO",
+                    TripItemType.VIDEO,
                     MediaStore.Video.VideoColumns.DURATION
             ));
         }
@@ -214,7 +202,7 @@ public class TripForegroundService extends Service {
             maxSeen = Math.max(maxSeen, scanCollectionSince(
                     MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
                     sinceSec,
-                    "AUDIO",
+                    TripItemType.AUDIO,
                     MediaStore.Audio.AudioColumns.DURATION
             ));
         }
@@ -226,7 +214,7 @@ public class TripForegroundService extends Service {
     }
 
 
-    private long scanCollectionSince(Uri collectionUri, long sinceSec, String type, @Nullable String durationColumn) {
+    private long scanCollectionSince(Uri collectionUri, long sinceSec, TripItemType type, @Nullable String durationColumn) {
         ContentResolver resolver = getContentResolver();
 
         java.util.ArrayList<String> projectionList = new java.util.ArrayList<>();
@@ -287,12 +275,12 @@ public class TripForegroundService extends Service {
         return maxSeen;
     }
 
-    private String buildMediaMetadata(long mediaStoreId, String mime, String type, long durationMs) {
+    private String buildMediaMetadata(long mediaStoreId, String mime, TripItemType type, long durationMs) {
         try {
             JSONObject obj = new JSONObject();
             obj.put("mediaStoreId", mediaStoreId);
             obj.put("mime", mime);
-            obj.put("type", type);
+            obj.put("type", type != null ? type.name() : null);
             if (durationMs > 0) obj.put("durationMs", durationMs);
             return obj.toString();
         } catch (Exception e) {

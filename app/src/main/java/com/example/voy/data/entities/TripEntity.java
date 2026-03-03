@@ -10,12 +10,10 @@ public class TripEntity {
     @PrimaryKey
     @NonNull
     public String id;
-
     @NonNull
     public String userId;
     public String title;
     public long startTime;
-
     @Nullable
     public Long endTime;
     @NonNull

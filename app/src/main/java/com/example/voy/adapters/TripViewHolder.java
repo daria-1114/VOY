@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.voy.R;
 import com.example.voy.data.entities.TripEntity;
-import com.example.voy.data.dao.TripDao;
+
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -32,7 +32,7 @@ public class TripViewHolder extends RecyclerView.ViewHolder{
     }
         void bind(TripEntity trip, TripAdapter.OnTripActionListener listener) {
             titleText.setText(
-                    trip.title != null && !trip.title.isEmpty()
+                    trip.title != null && !trip.title.trim().isEmpty()
                             ? trip.title
                             : "Untitled Trip"
             );
@@ -49,7 +49,6 @@ public class TripViewHolder extends RecyclerView.ViewHolder{
             }
 
             dateText.setText(startStr + " — " + endStr);
-            deleteBtn = itemView.findViewById(R.id.btn_delete);
             deleteBtn.setOnClickListener(v -> listener.onDeleteTrip(trip));
             tripItemMain.setOnClickListener(v-> listener.onTripClicked(trip));
         }
