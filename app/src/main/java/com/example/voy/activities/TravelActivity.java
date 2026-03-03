@@ -23,6 +23,9 @@ import com.example.voy.adapters.TripItemAdapter;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.Collections;
@@ -35,11 +38,14 @@ public class TravelActivity extends AppCompatActivity {
         private TripItemAdapter adapter;
         private static final int REQ_DELETE_MEDIA = 501;
         private TripItemEntity pendingDeleteItem;
+
         @Override
         protected void onCreate (Bundle savedInstanceState){
                 super.onCreate(savedInstanceState);
                 setContentView(R.layout.activity_travel);
                 MaterialToolbar toolbar = findViewById(R.id.headerToolbarTravel);
+                TextInputEditText etTripTitle = findViewById(R.id.etTripTitle);
+                MaterialButton btnSaveTripTitle = findViewById(R.id.btnSaveTripTitle);
                 toolbar.setNavigationOnClickListener(v -> finish());
                 toolbar.setOnMenuItemClickListener(item -> {
                         if(item.getItemId() == R.id.accountIcon){
@@ -47,6 +53,11 @@ public class TravelActivity extends AppCompatActivity {
                                 return true;
                         }
                         return false;
+                });
+                btnSaveTripTitle.setOnClickListener(v -> {
+                        String newTitle = etTripTitle.getText() != null ? etTripTitle.getText().toString().trim() : "";
+
+                        tripRepository.updateTripTitle(userId, tripId, newTitle);
                 });
                 userId = FirebaseAuth.getInstance().getCurrentUser() != null
                         ? FirebaseAuth.getInstance().getCurrentUser().getUid()

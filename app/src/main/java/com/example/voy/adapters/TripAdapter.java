@@ -18,9 +18,7 @@ public class TripAdapter extends RecyclerView.Adapter<TripViewHolder> {
         void onDeleteTrip(TripEntity trip);
         void onTripClicked(TripEntity trip);
     }
-
     private final OnTripActionListener listener;
-
     public TripAdapter(OnTripActionListener listener) {
         this.listener = listener;
     }

@@ -24,14 +24,59 @@
 
         app:menu="@menu/travel_menu"
         />
+    <LinearLayout
+        android:id="@+id/titleRow"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginHorizontal="16dp"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        app:layout_constraintTop_toBottomOf="@id/headerToolbarTravel"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilTripTitle"
+            style="@style/Widget.Material3.TextInputLayout.FilledBox.Dense"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:hint="Trip title"
+            app:boxCornerRadiusTopStart="16dp"
+            app:boxCornerRadiusTopEnd="16dp"
+            app:boxCornerRadiusBottomStart="16dp"
+            app:boxCornerRadiusBottomEnd="16dp">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etTripTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:maxLines="1"
+                android:singleLine="true"
+                android:inputType="textCapWords"/>
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnSaveTripTitle"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginStart="10dp"
+            android:contentDescription="Save title"
+            app:cornerRadius="16dp"
+            app:icon="@drawable/baseline_check_24"
+            app:iconGravity="textStart"
+            app:iconPadding="0dp"/>
+    </LinearLayout>
+
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerViewTripItems"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintHorizontal_bias="1.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@id/headerToolbarTravel"
+        app:layout_constraintTop_toBottomOf="@id/titleRow"
         app:layout_constraintVertical_bias="0.0" />
 </androidx.constraintlayout.widget.ConstraintLayout>
