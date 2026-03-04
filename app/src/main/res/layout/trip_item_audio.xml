@@ -6,23 +6,26 @@
     android:layout_height="wrap_content"
     android:padding="8dp">
 
+    <!-- Audio card (left) -->
     <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardMedia"
         android:layout_width="0dp"
         android:layout_height="220dp"
+        android:layout_marginEnd="8dp"
         app:cardCornerRadius="16dp"
         app:cardElevation="2dp"
         app:cardBackgroundColor="@android:color/darker_gray"
-        app:layout_constraintDimensionRatio="1:1"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+        app:layout_constraintEnd_toStartOf="@id/cardMap"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.68">
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:padding="20dp">
 
-            <!-- Play Button -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btnPlayAudio"
                 style="?attr/materialIconButtonStyle"
@@ -35,7 +38,6 @@
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"/>
 
-            <!-- Waveform container -->
             <LinearLayout
                 android:id="@+id/waveContainer"
                 android:layout_width="0dp"
@@ -48,20 +50,62 @@
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent">
 
-                <!-- Vertical waveform bars -->
-                <View android:layout_width="6dp" android:layout_height="16dp" android:layout_marginEnd="6dp" android:background="?attr/colorPrimary"/>
-                <View android:layout_width="6dp" android:layout_height="32dp" android:layout_marginEnd="6dp" android:background="?attr/colorPrimary"/>
-                <View android:layout_width="6dp" android:layout_height="24dp" android:layout_marginEnd="6dp" android:background="?attr/colorPrimary"/>
-                <View android:layout_width="6dp" android:layout_height="40dp" android:layout_marginEnd="6dp" android:background="?attr/colorPrimary"/>
-                <View android:layout_width="6dp" android:layout_height="20dp" android:layout_marginEnd="6dp" android:background="?attr/colorPrimary"/>
-                <View android:layout_width="6dp" android:layout_height="48dp" android:layout_marginEnd="6dp" android:background="?attr/colorPrimary"/>
-                <View android:layout_width="6dp" android:layout_height="28dp" android:layout_marginEnd="6dp" android:background="?attr/colorPrimary"/>
-                <View android:layout_width="6dp" android:layout_height="44dp" android:background="?attr/colorPrimary"/>
-
+                <!-- waveform bars ... -->
             </LinearLayout>
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Map preview card (right) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardMap"
+        android:layout_width="0dp"
+        android:layout_height="220dp"
+        android:padding="2dp"
+        app:cardCornerRadius="16dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp"
+        app:layout_constraintStart_toEndOf="@id/cardMedia"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.32"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/imgMapPreview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="@string/app_name" />
+
+            <!-- subtle fade at bottom -->
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_map_scrim" />
+
+            <!-- place chip -->
+            <TextView
+                android:id="@+id/txtPlaceChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|start"
+                android:layout_margin="10dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:background="@drawable/bg_place_chip"
+                android:visibility="gone" />
+        </FrameLayout>
     </com.google.android.material.card.MaterialCardView>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

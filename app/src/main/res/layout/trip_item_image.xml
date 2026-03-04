@@ -1,21 +1,85 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView
+<androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginHorizontal="16dp"
-    android:layout_marginVertical="8dp"
-    app:cardCornerRadius="24dp"
-    app:cardElevation="2dp"
-    app:strokeWidth="0dp">
+    android:padding="8dp">
 
-    <ImageView
-        android:id="@+id/imgMedia"
-        android:layout_width="match_parent"
+    <!-- Media card (left) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardMedia"
+        android:layout_width="0dp"
         android:layout_height="220dp"
-        android:background="?attr/colorSurfaceVariant"
-        android:scaleType="centerCrop"
-        android:contentDescription="@string/app_name" />
+        android:layout_marginEnd="8dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/cardMap"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.68">
 
-</com.google.android.material.card.MaterialCardView>
+        <!-- This is the PHOTO -->
+        <ImageView
+            android:id="@+id/imgMedia"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="?attr/colorSurfaceVariant"
+            android:scaleType="centerCrop"
+            android:contentDescription="@string/app_name" />
+
+    </com.google.android.material.card.MaterialCardView>
+
+    <!-- Map preview card (right) -->
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/cardMap"
+        android:layout_width="0dp"
+        android:layout_height="220dp"
+        android:padding="2dp"
+        app:cardCornerRadius="24dp"
+        app:cardElevation="2dp"
+        app:strokeWidth="0dp"
+        app:layout_constraintStart_toEndOf="@id/cardMedia"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintWidth_percent="0.32"
+        android:visibility="gone">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/imgMapPreview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:contentDescription="@string/app_name" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_map_scrim" />
+
+            <TextView
+                android:id="@+id/txtPlaceChip"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|start"
+                android:layout_margin="10dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="6dp"
+                android:textSize="12sp"
+                android:textColor="@android:color/white"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:background="@drawable/bg_place_chip"
+                android:visibility="gone" />
+        </FrameLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

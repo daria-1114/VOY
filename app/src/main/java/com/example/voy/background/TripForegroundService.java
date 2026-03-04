@@ -60,10 +60,6 @@ public class TripForegroundService extends Service {
     private FusedLocationProviderClient fusedClient;
     private LocationCallback locationCallback;
     private volatile Location lastLocation;
-    private volatile long lastLocationTimeMs = 0L;
-    private static final long LOCATION_FRESH_MS = 4 * 60_000L;
-
-
     private static final String TAG = "TripForegroundService";
 
     @Override
@@ -79,7 +75,7 @@ public class TripForegroundService extends Service {
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand action=" + (intent == null ? "null" : intent.getAction()));
 
-        // when restarting the service- use store state for continuing what already started
+        // when restarting the service(not from main activity start trip button) - use store state for continuing what already started
         if (intent == null || intent.getAction() == null) {
             TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
             if (!state.isValid()) {
@@ -166,7 +162,9 @@ public class TripForegroundService extends Service {
                 Location loc = locationResult.getLastLocation();
                 if(loc != null){
                     lastLocation = loc;
-                    lastLocationTimeMs = System.currentTimeMillis();
+                    Log.d(TAG, "Location updated: "
+                            + loc.getLatitude() + ", "
+                            + loc.getLongitude());
                 }
             }
         };
@@ -174,7 +172,6 @@ public class TripForegroundService extends Service {
         fusedClient.getLastLocation().addOnSuccessListener(loc ->{
             if(loc != null){
                 lastLocation = loc;
-                lastLocationTimeMs = System.currentTimeMillis();
             }
         });
     }
@@ -318,11 +315,8 @@ public class TripForegroundService extends Service {
                 Double lat = null;
                 Double lng = null;
                 if(canAccessLocation() && lastLocation!=null){
-                    long now = System.currentTimeMillis();
-                    if(now - lastLocationTimeMs <= LOCATION_FRESH_MS){
-                        lat = lastLocation.getLatitude();
-                        lng = lastLocation.getLongitude();
-                    }
+                    lat = lastLocation.getLatitude();
+                    lng = lastLocation.getLongitude();
                 }
                 TripItemEntity item = new TripItemEntity(
                         UUID.randomUUID().toString(),
