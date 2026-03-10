@@ -1,189 +1,260 @@
 package com.example.voy.background;
 
-import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
-import android.content.ContentResolver;
 import android.content.Intent;
-import android.content.pm.PackageManager;
-import android.database.Cursor;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
-import android.provider.MediaStore;
 import android.util.Log;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
-import androidx.core.content.ContextCompat;
 
 import com.example.voy.R;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
 import com.example.voy.enums.TripItemType;
-import com.google.android.gms.location.FusedLocationProviderClient;
-import com.google.android.gms.location.LocationCallback;
-import com.google.android.gms.location.LocationResult;
-import com.google.android.gms.location.LocationServices;
-import com.google.android.gms.location.Priority;
-import com.google.android.gms.location.LocationRequest;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.io.File;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class TripForegroundService extends Service {
 
-    public static final String ACTION_START = "com.example.voy.action.START_TRIP";
-    public static final String ACTION_STOP  = "com.example.voy.action.STOP_TRIP";
-    public static final String EXTRA_USER_ID = "extra_user_id";
-    public static final String EXTRA_TRIP_ID = "extra_trip_id";
+    public static final String ACTION_START          = "com.example.voy.action.START_TRIP";
+    public static final String ACTION_STOP           = "com.example.voy.action.STOP_TRIP";
+    public static final String ACTION_START_MOCK     = "com.example.voy.action.START_MOCK_TRIP";
+    public static final String EXTRA_USER_ID         = "extra_user_id";
+    public static final String EXTRA_TRIP_ID         = "extra_trip_id";
     public static final String EXTRA_TRIP_START_TIME = "extra_trip_start_time";
-    private static final String CHANNEL_ID = "trip_capture_channel";
-    private static final int NOTIF_ID = 101;
-    private TripRepository tripRepository;
+
+    private static final String CHANNEL_ID  = "trip_capture_channel";
+    private static final int    NOTIF_ID    = 101;
+    private static final String TAG         = "TripForegroundService";
+    private static final String MOCK_FOLDER = "/sdcard/Voy/MockTrip/";
+
+    // Core
+    private TripRepository  tripRepository;
     private ExecutorService executor;
-    private Future<?> scanLoopFuture;
+    private Future<?>       scanLoopFuture;
     private volatile boolean running = false;
+
+    // Trip state
     private String userId;
     private String tripId;
-    private long tripStartTimeMs;
-    private long lastScanDateAddedSec;
-    private FusedLocationProviderClient fusedClient;
-    private LocationCallback locationCallback;
-    private volatile Location lastLocation;
-    private static final String TAG = "TripForegroundService";
+    private long   tripStartTimeMs;
+    private long   lastScanDateAddedSec;
+
+    // Helpers
+    private TripLocationManager  locationManager;
+    private MediaScanner     mediaScanner;
+    private TripJsonWriter   tripJsonWriter;
+
+    // -------------------------------------------------------------------------
+    // Lifecycle
+    // -------------------------------------------------------------------------
 
     @Override
     public void onCreate() {
         super.onCreate();
-        tripRepository = new TripRepository(getApplicationContext());
-        executor = Executors.newSingleThreadExecutor();
+        tripRepository  = new TripRepository(getApplicationContext());
+        executor        = Executors.newSingleThreadExecutor();
+        locationManager = new TripLocationManager(getApplicationContext());
         createNotificationChannel();
-        fusedClient = LocationServices.getFusedLocationProviderClient(this);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d(TAG, "onStartCommand action=" + (intent == null ? "null" : intent.getAction()));
+        Log.d(TAG, "onStartCommand action="
+                + (intent == null ? "null" : intent.getAction()));
 
-        // when restarting the service(not from main activity start trip button) - use store state for continuing what already started
+        // ── System restart — resume from saved state ──────────────────────
         if (intent == null || intent.getAction() == null) {
             TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
             if (!state.isValid()) {
                 stopSelf();
-                return START_NOT_STICKY;//after this the service doesn't restart, ONLY if the user presses start again
+                return START_NOT_STICKY;
             }
-            userId = state.userId;
-            tripId = state.tripId;
+            userId          = state.userId;
+            tripId          = state.tripId;
             tripStartTimeMs = state.startTimeMs;
-            long startSec = tripStartTimeMs / 1000L;
-            lastScanDateAddedSec = (state.lastScanDateAddedSec > 0) ? state.lastScanDateAddedSec : startSec;
-            Log.d(TAG, "Calling startForeground tripId=" + tripId);
+            long startSec   = tripStartTimeMs / 1000L;
+            lastScanDateAddedSec = state.lastScanDateAddedSec > 0
+                    ? state.lastScanDateAddedSec : startSec;
+
+            tripJsonWriter = new TripJsonWriter(
+                    getApplicationContext(), tripId, tripStartTimeMs);
+
+            Log.d(TAG, "Resuming trip, tripId=" + tripId);
             startForeground(NOTIF_ID, buildNotification("Resuming trip capture…"));
-            startLocationUpdatesIfPermitted();
+            startLocationManager();
             startMediaScanLoop();
             return START_STICKY;
         }
+
         String action = intent.getAction();
+
+        // ── ACTION_START ──────────────────────────────────────────────────
         if (ACTION_START.equals(action)) {
             String incomingUserId = intent.getStringExtra(EXTRA_USER_ID);
             String incomingTripId = intent.getStringExtra(EXTRA_TRIP_ID);
-            long incomingStart = intent.getLongExtra(EXTRA_TRIP_START_TIME, -1);
+            long   incomingStart  = intent.getLongExtra(EXTRA_TRIP_START_TIME, -1);
 
             if (incomingUserId == null || incomingTripId == null || incomingStart <= 0) {
                 stopSelf();
                 return START_NOT_STICKY;
             }
 
-            userId = incomingUserId;
-            tripId = incomingTripId;
+            userId          = incomingUserId;
+            tripId          = incomingTripId;
             tripStartTimeMs = incomingStart;
 
             TripCaptureStateStore.saveActive(this, userId, tripId, tripStartTimeMs);
 
-            TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
             long startSec = tripStartTimeMs / 1000L;
-            lastScanDateAddedSec = (state.lastScanDateAddedSec > 0) ? state.lastScanDateAddedSec : startSec;
+            TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
+            lastScanDateAddedSec = state.lastScanDateAddedSec > 0
+                    ? state.lastScanDateAddedSec : startSec;
+
+            tripJsonWriter = new TripJsonWriter(
+                    getApplicationContext(), tripId, tripStartTimeMs);
 
             startForeground(NOTIF_ID, buildNotification("Capturing trip items…"));
-            startLocationUpdatesIfPermitted();
+            startLocationManager();
             startMediaScanLoop();
-
             return START_STICKY;
         }
+
+        // ── ACTION_STOP ───────────────────────────────────────────────────
         if (ACTION_STOP.equals(action)) {
-            TripCaptureStateStore.clear(this);
-            stopCapture();
-            stopForeground(true);
-            stopLocationUpdates();
-            stopSelf();
+            stopRealTrip();
             return START_NOT_STICKY;
         }
+
+        // ── ACTION_START_MOCK ─────────────────────────────────────────────
+        if (ACTION_START_MOCK.equals(action)) {
+            String incomingUserId = intent.getStringExtra(EXTRA_USER_ID);
+            String incomingTripId = intent.getStringExtra(EXTRA_TRIP_ID);
+            long   incomingStart  = intent.getLongExtra(EXTRA_TRIP_START_TIME, -1);
+
+            if (incomingUserId == null || incomingTripId == null || incomingStart <= 0) {
+                stopSelf();
+                return START_NOT_STICKY;
+            }
+
+            userId          = incomingUserId;
+            tripId          = incomingTripId;
+            tripStartTimeMs = incomingStart;
+
+            startForeground(NOTIF_ID, buildNotification("Loading mock trip…"));
+
+            final String simUserId  = userId;
+            final String simTripId  = tripId;
+            final long   simStartMs = tripStartTimeMs;
+
+            executor.submit(() -> {
+                runMockTrip(simUserId, simTripId, simStartMs);
+                tripRepository.finishTrip(simUserId, simTripId,
+                        System.currentTimeMillis());
+                stopForeground(true);
+                stopSelf();
+            });
+
+            return START_NOT_STICKY;
+        }
+
         stopSelf();
         return START_NOT_STICKY;
     }
 
-    private void stopLocationUpdates() {
-        if(fusedClient != null && locationCallback != null){
-            fusedClient.removeLocationUpdates(locationCallback);
-            locationCallback = null;
+    @Override
+    public void onDestroy() {
+        if (tripJsonWriter != null) {
+            tripJsonWriter.close(System.currentTimeMillis());
+            tripJsonWriter = null;
         }
+        stopCapture();
+        locationManager.stop();
+        executor.shutdownNow();
+        super.onDestroy();
     }
 
-    private void startLocationUpdatesIfPermitted() {
-        if(!canAccessLocation()){
-            Log.d(TAG, "location permission not granted. will store null lat/long");
-            return;
-        }
-        startLocationUpdates();
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
     }
-   @SuppressLint("MissingPermission")
-    private void startLocationUpdates() {
-        if(fusedClient == null) return;
-        if(locationCallback != null) return;
-        LocationRequest req = LocationRequest.create();
-        req.setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY);
-        req.setInterval(30_000L);          // desired update interval
-        req.setFastestInterval(15_000L);   // fastest allowed
-        req.setSmallestDisplacement(25f);
 
-        locationCallback = new LocationCallback() {
-            @Override
-            public void onLocationResult(@NonNull LocationResult locationResult) {
-                Location loc = locationResult.getLastLocation();
-                if(loc != null){
-                    lastLocation = loc;
-                    Log.d(TAG, "Location updated: "
-                            + loc.getLatitude() + ", "
-                            + loc.getLongitude());
-                }
-            }
-        };
-        fusedClient.requestLocationUpdates(req, locationCallback, getMainLooper());
-        fusedClient.getLastLocation().addOnSuccessListener(loc ->{
-            if(loc != null){
-                lastLocation = loc;
-            }
-        });
+    // -------------------------------------------------------------------------
+    // Real trip
+    // -------------------------------------------------------------------------
+
+    private void startLocationManager() {
+        locationManager.start(getMainLooper());
     }
 
     private void startMediaScanLoop() {
         if (running) return;
         running = true;
+
+        // Build scanner with a callback — called for every new file found
+        mediaScanner = new MediaScanner(getApplicationContext(), scannedItem -> {
+            Location loc = locationManager.getLastLocation();
+            Double lat = null, lng = null;
+            if (locationManager.hasPermission() && loc != null) {
+                lat = loc.getLatitude();
+                lng = loc.getLongitude();
+            }
+
+            TripItemEntity item = new TripItemEntity(
+                    UUID.randomUUID().toString(),
+                    tripId,
+                    userId,
+                    scannedItem.type,
+                    scannedItem.timestampMs,
+                    scannedItem.uri.toString(),
+                    null,
+                    lat,
+                    lng,
+                    null,
+                    scannedItem.buildMetadataJson()
+            );
+
+            tripRepository.insertTripItem(item);
+
+            if (tripJsonWriter != null) {
+                tripJsonWriter.append(item);
+            }
+        });
+
         scanLoopFuture = executor.submit(() -> {
             while (running) {
                 try {
-                    // This method checks canReadImages/canReadVideos/canReadAudio internally
-                    scanMediaStoreForNewItemsSafely();
+                    if (mediaScanner.canScanAnything()) {
+                        long tripStartSec = tripStartTimeMs / 1000L;
+                        long sinceSec     = Math.max(
+                                lastScanDateAddedSec - 2, tripStartSec);
+
+                        long maxSeen = mediaScanner.scan(sinceSec);
+
+                        if (maxSeen > lastScanDateAddedSec) {
+                            lastScanDateAddedSec = maxSeen;
+                            TripCaptureStateStore.saveLastScanDateAddedSec(
+                                    this, lastScanDateAddedSec);
+                        }
+                    }
                     Thread.sleep(90_000);
                 } catch (InterruptedException e) {
                     running = false;
@@ -202,157 +273,143 @@ public class TripForegroundService extends Service {
         }
     }
 
-    private boolean canReadImages() {
-        if (Build.VERSION.SDK_INT >= 33) {
-            return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_IMAGES)
-                    == PackageManager.PERMISSION_GRANTED;
+    private void stopRealTrip() {
+        if (tripJsonWriter != null) {
+            tripJsonWriter.close(System.currentTimeMillis());
+            tripJsonWriter = null;
         }
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED;
+        TripCaptureStateStore.clear(this);
+        stopCapture();
+        locationManager.stop();
+        stopForeground(true);
+        stopSelf();
     }
 
-    private boolean canReadVideos() {
-        if (Build.VERSION.SDK_INT >= 33) {
-            return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_VIDEO)
-                    == PackageManager.PERMISSION_GRANTED;
-        }
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED;
-    }
+    // -------------------------------------------------------------------------
+    // Mock trip — reads res/raw/mock_trip.json, inserts into Room
+    // -------------------------------------------------------------------------
 
-    private boolean canReadAudio() {
-        if (Build.VERSION.SDK_INT >= 33) {
-            return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO)
-                    == PackageManager.PERMISSION_GRANTED;
-        }
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
-                == PackageManager.PERMISSION_GRANTED;
-    }
-    private boolean canAccessLocation(){
-        return ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
-                == PackageManager.PERMISSION_GRANTED;
-    }
-    private void scanMediaStoreForNewItemsSafely() {
-        boolean any = canReadImages() || canReadVideos() || canReadAudio();
-        if (!any) return;
+    private void runMockTrip(String simUserId, String simTripId, long simStartMs) {
+        Log.d(TAG, "Mock trip starting for tripId=" + simTripId);
+        try {
+            String     json = readRawJson();
+            JSONObject root = new JSONObject(json);
+            JSONArray  days = root.getJSONArray("days");
 
-        long tripStartSec = tripStartTimeMs / 1000L;
-        long sinceSec = Math.max(lastScanDateAddedSec - 2, tripStartSec);
+            for (int d = 0; d < days.length(); d++) {
+                JSONObject day       = days.getJSONObject(d);
+                int        dayNumber = day.getInt("dayNumber");
+                String     dayLabel  = day.getString("label");
+                int        steps     = day.getInt("steps");
+                JSONArray  items     = day.getJSONArray("items");
 
-        long maxSeen = lastScanDateAddedSec;
+                long dayStartOffsetMs = TimeUnit.HOURS.toMillis(24L * (dayNumber - 1));
+                long dayDurationMs    = TimeUnit.HOURS.toMillis(23);
+                long intervalMs       = items.length() > 1
+                        ? dayDurationMs / (items.length() - 1) : 0;
 
-        if (canReadImages()) {
-            maxSeen = Math.max(maxSeen, scanCollectionSince(
-                    MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                    sinceSec,
-                    TripItemType.PHOTO,
-                    null
-            ));
-        }
+                for (int i = 0; i < items.length(); i++) {
+                    JSONObject itemObj  = items.getJSONObject(i);
+                    String     filename = itemObj.getString("filename");
+                    TripItemType type   = TripItemType.valueOf(
+                            itemObj.getString("type"));
+                    double lat          = itemObj.getDouble("lat");
+                    double lng          = itemObj.getDouble("lng");
+                    String landmark     = itemObj.optString("landmark", null);
 
-        if (canReadVideos()) {
-            maxSeen = Math.max(maxSeen, scanCollectionSince(
-                    MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
-                    sinceSec,
-                    TripItemType.VIDEO,
-                    MediaStore.Video.VideoColumns.DURATION
-            ));
-        }
+                    long timestampMs = simStartMs + dayStartOffsetMs
+                            + (intervalMs * i);
 
-        if (canReadAudio()) {
-            maxSeen = Math.max(maxSeen, scanCollectionSince(
-                    MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
-                    sinceSec,
-                    TripItemType.AUDIO,
-                    MediaStore.Audio.AudioColumns.DURATION
-            ));
-        }
+                    String filePath = MOCK_FOLDER + filename;
+                    String localUri = Uri.fromFile(new File(filePath)).toString();
 
-        if (maxSeen > lastScanDateAddedSec) {
-            lastScanDateAddedSec = maxSeen;
-            TripCaptureStateStore.saveLastScanDateAddedSec(this, lastScanDateAddedSec);
-        }
-    }
+                    String metadataJson = buildMockMetadata(
+                            type, filename, landmark);
 
-
-    private long scanCollectionSince(Uri collectionUri, long sinceSec, TripItemType type, @Nullable String durationColumn) {
-        ContentResolver resolver = getContentResolver();
-
-        java.util.ArrayList<String> projectionList = new java.util.ArrayList<>();
-        projectionList.add(MediaStore.MediaColumns._ID);
-        projectionList.add(MediaStore.MediaColumns.DATE_ADDED);
-        projectionList.add(MediaStore.MediaColumns.MIME_TYPE);
-        if (durationColumn != null) projectionList.add(durationColumn);
-
-        String[] projection = projectionList.toArray(new String[0]);
-
-        String selection = MediaStore.MediaColumns.DATE_ADDED + " > ?";
-        String[] selectionArgs = new String[]{ String.valueOf(sinceSec) };
-        String sortOrder = MediaStore.MediaColumns.DATE_ADDED + " ASC";
-
-        long maxSeen = sinceSec;
-
-        try (Cursor cursor = resolver.query(collectionUri, projection, selection, selectionArgs, sortOrder)) {
-            if (cursor == null) return maxSeen;
-
-            int idCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns._ID);
-            int dateAddedCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_ADDED);
-            int mimeCol = cursor.getColumnIndexOrThrow(MediaStore.MediaColumns.MIME_TYPE);
-            int durCol = (durationColumn != null) ? cursor.getColumnIndexOrThrow(durationColumn) : -1;
-
-            while (cursor.moveToNext()) {
-                long mediaId = cursor.getLong(idCol);
-                long dateAddedSec = cursor.getLong(dateAddedCol);
-                String mime = cursor.getString(mimeCol);
-                long durationMs = (durCol != -1) ? cursor.getLong(durCol) : 0L;
-
-                maxSeen = Math.max(maxSeen, dateAddedSec);
-
-                Uri itemUri = Uri.withAppendedPath(collectionUri, String.valueOf(mediaId));
-                long timestampMs = dateAddedSec * 1000L;
-
-                String metadataJson = buildMediaMetadata(mediaId, mime, type, durationMs);
-                Double lat = null;
-                Double lng = null;
-                if(canAccessLocation() && lastLocation!=null){
-                    lat = lastLocation.getLatitude();
-                    lng = lastLocation.getLongitude();
+                    TripItemEntity entity = new TripItemEntity(
+                            UUID.randomUUID().toString(),
+                            simTripId,
+                            simUserId,
+                            type,
+                            timestampMs,
+                            localUri,
+                            null,
+                            lat,
+                            lng,
+                            landmark,
+                            metadataJson
+                    );
+                    tripRepository.insertTripItem(entity);
+                    Log.d(TAG, "Mock inserted " + type + " ["
+                            + filename + "] @ "
+                            + (landmark != null ? landmark : "no landmark"));
                 }
-                TripItemEntity item = new TripItemEntity(
+
+                // Steps at end of each day
+                long stepsTimestampMs = simStartMs + dayStartOffsetMs
+                        + TimeUnit.HOURS.toMillis(23)
+                        + TimeUnit.MINUTES.toMillis(59);
+
+                TripItemEntity stepsEntity = new TripItemEntity(
                         UUID.randomUUID().toString(),
-                        tripId,
-                        userId,
-                        type,
-                        timestampMs,
-                        itemUri.toString(),
+                        simTripId,
+                        simUserId,
+                        TripItemType.STEPS,
+                        stepsTimestampMs,
                         null,
-                        lat,
-                        lng,
                         null,
-                        metadataJson
+                        null,
+                        null,
+                        dayLabel + " — " + steps + " steps",
+                        buildStepsMeta(steps, dayLabel)
                 );
-
-                tripRepository.insertTripItem(item);
+                tripRepository.insertTripItem(stepsEntity);
+                Log.d(TAG, "Mock inserted STEPS for " + dayLabel
+                        + ": " + steps);
             }
-        } catch (Exception e) {
-            Log.e(TAG, "scanCollectionSince failed for type=" + type, e);
-        }
 
-        return maxSeen;
+            Log.d(TAG, "Mock trip complete");
+
+        } catch (Exception e) {
+            Log.e(TAG, "Mock trip failed", e);
+        }
     }
 
-    private String buildMediaMetadata(long mediaStoreId, String mime, TripItemType type, long durationMs) {
+    private String readRawJson() throws Exception {
+        InputStream is     = getResources().openRawResource(R.raw.mock_trip);
+        byte[]      buffer = new byte[is.available()];
+        is.read(buffer);
+        is.close();
+        return new String(buffer, StandardCharsets.UTF_8);
+    }
+
+    private String buildMockMetadata(TripItemType type, String filename,
+                                     @Nullable String landmark) {
         try {
             JSONObject obj = new JSONObject();
-            obj.put("mediaStoreId", mediaStoreId);
-            obj.put("mime", mime);
-            obj.put("type", type != null ? type.name() : null);
-            if (durationMs > 0) obj.put("durationMs", durationMs);
+            obj.put("type", type.name());
+            obj.put("filename", filename);
+            if (landmark != null) obj.put("landmark", landmark);
             return obj.toString();
         } catch (Exception e) {
             return null;
         }
     }
+
+    private String buildStepsMeta(int steps, String dayLabel) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("steps", steps);
+            obj.put("dayLabel", dayLabel);
+            return obj.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Notification
+    // -------------------------------------------------------------------------
 
     private Notification buildNotification(String text) {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
@@ -367,26 +424,10 @@ public class TripForegroundService extends Service {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                    CHANNEL_ID,
-                    "Trip Capture",
-                    NotificationManager.IMPORTANCE_DEFAULT
-            );
+                    CHANNEL_ID, "Trip Capture",
+                    NotificationManager.IMPORTANCE_DEFAULT);
             NotificationManager nm = getSystemService(NotificationManager.class);
             if (nm != null) nm.createNotificationChannel(channel);
         }
-    }
-
-    @Override
-    public void onDestroy() {
-        stopCapture();
-        stopLocationUpdates();
-        executor.shutdownNow();
-        super.onDestroy();
-    }
-
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent) {
-        return null;
     }
 }

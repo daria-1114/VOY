@@ -143,6 +143,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                         + "&maptype=roadmap"
                         + "&markers=color:red%7C" + lat + "," + lng
                         + "&key=" + BuildConfig.MAPS_API_KEY;
+
         Glide.with(iv.getContext())
                 .load(url)
                 .centerCrop()

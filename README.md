@@ -12,7 +12,6 @@ TO-DO:
    - ~~display message if there are no entries~~
    - ~~user can delete entries(menu button)~~
    - ~~if clicked on an Entry, go to entry page~~
-   - finished entries appear with one random picture on the right side, name and location, and beginning of description
    - ~~MenuBar with Maps(?) and UserAccount dropdown-lets user logout~~
 3. Diary Page
    a)NEW ENTRY
@@ -28,12 +27,18 @@ TO-DO:
    - user can add text - description of the vacation in the beginning of the Entry(optional)
    - button for Narrative Generation
    
+
+
+
 - filter by video, audio, image
 - ability to add notes on a trip in the beginning
 - add steps(per day)
 - make a finished entry look more appealing with space for notes and clustered images if they are close to each other(time)
 - create mock trip
 - fix the location not changing for the emulator
-
-
+- user can add tickets manually as pdfs and other media files
+- keyboard in login page fix on actual phone
+- do something about audio not being captured 
+- make play buttons responsive for audio and video
+- three random pictures appearing in main for each trip --maybe
 
