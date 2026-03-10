@@ -5,7 +5,9 @@ import static android.view.View.VISIBLE;
 
 import android.Manifest;
 import android.app.Application;
+import android.app.Service;
 import android.content.Intent;
+import android.content.pm.ServiceInfo;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Build;
@@ -44,6 +46,7 @@ public class MainActivity extends AppCompatActivity {
 
     private TextView emptyMessage;
     private ExtendedFloatingActionButton fabServiceToggle;
+    private ExtendedFloatingActionButton fabMockTrip;
     private TripRepository tripRepository;
     private TripEntity activeTrip;
     private String userId;
@@ -52,6 +55,7 @@ public class MainActivity extends AppCompatActivity {
     private ActivityResultLauncher<String[]> permLauncher;
     private Runnable pendingStartTrip;
     private boolean serviceStartedByUi = false;
+    private boolean mockTripStartedByUi = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,6 +106,7 @@ public class MainActivity extends AppCompatActivity {
         tripRepository = new TripRepository(getApplicationContext());
         MaterialToolbar toolbar = findViewById(R.id.headerToolbar);
         fabServiceToggle = findViewById(R.id.fabServiceToggle);
+        fabMockTrip = findViewById(R.id.fabMockTrip);
         emptyMessage = findViewById(R.id.emptyMessage);
 
         tripAdapter = new TripAdapter(new TripAdapter.OnTripActionListener() {
@@ -197,6 +202,29 @@ public class MainActivity extends AppCompatActivity {
                 tripRepository.finishTrip(userId, activeTrip.getId(), end);
             }
         });
+        fabMockTrip.setOnClickListener(v->{
+            if(userId == null) return;
+            if(activeTrip !=null){
+                Toast.makeText(this, "Stop current trip before starting mock trip.",Toast.LENGTH_LONG).show();
+                return;
+            }
+            requestTripPermissionsThen(()->{
+                String newTripId = UUID.randomUUID().toString();
+                long now = System.currentTimeMillis();
+                TripEntity trip = new TripEntity(
+                        now,
+                        newTripId,
+                        null,
+                        "ACTIVE",
+                        "Rome Mock Trip",
+                        userId
+                );
+                tripRepository.insertTrip(trip);
+                new android.os.Handler(getMainLooper()).postDelayed(() -> {
+                    startMockTripService(newTripId, userId, now);
+                }, 300);
+            });
+        });
 
     }
 
@@ -219,7 +247,16 @@ public class MainActivity extends AppCompatActivity {
         ContextCompat.startForegroundService(this, serviceIntent);
         serviceStartedByUi = true;
     }
-
+    private void startMockTripService(@NonNull String tripId, @NonNull String userId, long startTime){
+        if(mockTripStartedByUi) return;
+        Intent serviceIntent = new Intent(this, TripForegroundService.class);
+        serviceIntent.setAction(TripForegroundService.ACTION_START_MOCK);
+        serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_ID, tripId);
+        serviceIntent.putExtra(TripForegroundService.EXTRA_USER_ID, userId);
+        serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_START_TIME, startTime);
+        ContextCompat.startForegroundService(this, serviceIntent);
+        mockTripStartedByUi = true;
+    }
     private void updateFabUi(TripEntity trip) {
 
         if (trip == null) {
