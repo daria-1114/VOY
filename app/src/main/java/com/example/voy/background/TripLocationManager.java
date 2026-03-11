@@ -25,7 +25,8 @@ import org.jspecify.annotations.NonNull;
 
 public class TripLocationManager {
     private static final String TAG = "TripLocationManager";
-
+    private float totalDistanceMeters = 0f;
+    private Location previousLocation = null;
     private final Context context;
     private final FusedLocationProviderClient fusedClient;
     private LocationCallback locationCallback;
@@ -59,9 +60,8 @@ public class TripLocationManager {
         if(locationCallback != null)return;
 
         LocationRequest req = new LocationRequest.Builder(30_000L)
-                    .setPriority(Priority.PRIORITY_BALANCED_POWER_ACCURACY)
+                    .setPriority(Priority.PRIORITY_HIGH_ACCURACY)
                     .setMinUpdateIntervalMillis(15_000L)
-                    .setMinUpdateDistanceMeters(25f)
                     .build();
 
         locationCallback = new LocationCallback() {
@@ -69,8 +69,12 @@ public class TripLocationManager {
             public void onLocationResult(@NonNull LocationResult result){
                 Location loc = result.getLastLocation();
                 if(loc != null){
+                    if (previousLocation != null) {
+                        totalDistanceMeters += previousLocation.distanceTo(loc);
+                    }
+                    previousLocation = loc;
                     lastLocation = loc;
-                    Log.d(TAG, "Location updated "+ loc.getLatitude()+", "+ loc.getLongitude());
+                    Log.d(TAG, "Location updated "+ loc.getLatitude()+", "+ loc.getLongitude()+" total distance "+totalDistanceMeters);
                 }
             }
         };
@@ -100,5 +104,12 @@ public class TripLocationManager {
         return ContextCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
+    public int getEstimatedSteps(){
+        return (int)(totalDistanceMeters/0.762f);
+    }
 
+    public void resetDailyDistance(){
+        totalDistanceMeters = 0f;
+        previousLocation = null;
+    }
 }

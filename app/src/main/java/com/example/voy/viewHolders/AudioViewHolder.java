@@ -21,6 +21,5 @@ public class AudioViewHolder extends RecyclerView.ViewHolder {
         mapPreview = itemView.findViewById(R.id.imgMapPreview);
         mapCard = itemView.findViewById(R.id.cardMap);
         placeChip = itemView.findViewById(R.id.txtPlaceChip);
-
     }
 }
