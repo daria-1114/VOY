@@ -2,10 +2,12 @@ package com.example.voy.adapters;
 import android.content.Intent;
 import android.location.Address;
 import android.location.Geocoder;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,6 +19,7 @@ import com.example.voy.R;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.viewHolders.AudioViewHolder;
 import com.example.voy.viewHolders.PhotoViewHolder;
+import com.example.voy.viewHolders.StepsViewHolder;
 import com.example.voy.viewHolders.VideoViewHolder;
 
 import org.w3c.dom.Text;
@@ -34,8 +37,10 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private static final int TYPE_PHOTO = 1;
     private static final int TYPE_VIDEO = 2;
     private static final int TYPE_AUDIO = 3;
+    private static final int TYPE_STEPS = 4;
     private final Map<String, String> placeCache = new HashMap<>();
-
+    private MediaPlayer mediaPlayer;
+    private AudioViewHolder currentAudioHolder;
     public interface OnItemClickedListener {
         void onItemClick(TripItemEntity item);
         // Optional: if you want separate click events later
@@ -56,6 +61,8 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 return TYPE_VIDEO;
             case AUDIO:
                 return TYPE_AUDIO;
+            case STEPS:
+                return TYPE_STEPS;
             case PHOTO:
             default:
                 return TYPE_PHOTO;
@@ -73,7 +80,10 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         } else if (viewType == TYPE_VIDEO) {
             View v = inflater.inflate(R.layout.trip_item_video, parent, false);
             return new VideoViewHolder(v);
-        } else {
+        }else if(viewType == TYPE_STEPS){
+            View v = inflater.inflate(R.layout.trip_item_steps, parent, false);
+            return new StepsViewHolder(v);
+        }else {
             View v = inflater.inflate(R.layout.trip_item_audio, parent, false);
             return new AudioViewHolder(v);
         }
@@ -88,28 +98,180 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             bindImage(h.imageView, item.localUri);
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
-            bindPlaceChip(h.placeChip, item.lat, item.lng);
+            bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
         }
         else if (holder instanceof VideoViewHolder) {
             VideoViewHolder h = (VideoViewHolder) holder;
-            bindImage(h.thumbView, item.localUri);
+
+            // Stop and release any previous playback on this holder
+            if (h.mediaPlayer != null) {
+                h.mediaPlayer.release();
+                h.mediaPlayer = null;
+            }
             if (h.playOverlay != null) h.playOverlay.setVisibility(View.VISIBLE);
+
+            Uri videoUri = resolveUri(h.itemView, item.localUri);
+            if (videoUri == null) return;
+
+            h.videoView.setSurfaceTextureListener(
+                    new android.view.TextureView.SurfaceTextureListener() {
+
+                        @Override
+                        public void onSurfaceTextureAvailable(
+                                android.graphics.SurfaceTexture surface, int w, int h2) {
+                            try {
+                                android.media.MediaPlayer mp = new android.media.MediaPlayer();
+                                h.mediaPlayer = mp;
+                                mp.setSurface(new android.view.Surface(surface));
+                                mp.setDataSource(h.itemView.getContext(), videoUri);
+                                mp.prepareAsync();
+                                mp.setOnPreparedListener(prepared -> {
+                                    // Seek to first frame as preview, don't autoplay
+                                    prepared.seekTo(500);
+                                });
+                                mp.setOnCompletionListener(completed -> {
+                                    if (h.playOverlay != null)
+                                        h.playOverlay.setVisibility(View.VISIBLE);
+                                });
+                            } catch (Exception e) {
+                                android.util.Log.e("TripItemAdapter", "Video error", e);
+                            }
+                        }
+
+                        @Override
+                        public void onSurfaceTextureSizeChanged(
+                                android.graphics.SurfaceTexture s, int w, int h2) {}
+
+                        @Override
+                        public boolean onSurfaceTextureDestroyed(
+                                android.graphics.SurfaceTexture s) {
+                            if (h.mediaPlayer != null) {
+                                h.mediaPlayer.release();
+                                h.mediaPlayer = null;
+                            }
+                            return true;
+                        }
+
+                        @Override
+                        public void onSurfaceTextureUpdated(
+                                android.graphics.SurfaceTexture s) {}
+                    });
+
+            if (h.playOverlay != null) {
+                h.playOverlay.setOnClickListener(v -> {
+                    if (h.mediaPlayer == null) return;
+                    if (h.mediaPlayer.isPlaying()) {
+                        h.mediaPlayer.pause();
+                        h.playOverlay.setVisibility(View.VISIBLE);
+                    } else {
+                        h.mediaPlayer.start();
+                        h.playOverlay.setVisibility(View.GONE);
+                    }
+                });
+            }
+
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
-            bindPlaceChip(h.placeChip, item.lat, item.lng);
+            bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
         }
         else if (holder instanceof AudioViewHolder) {
             AudioViewHolder h = (AudioViewHolder) holder;
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
-            bindPlaceChip(h.placeChip, item.lat, item.lng);
-            // audio has no title by design
-            // If you want: handle play click here later
-            // h.playButton.setOnClickListener(v -> listener.onAudioPlayClick(item));
+            bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
+
+            h.playButton.setOnClickListener(v -> {
+                Uri audioUri = resolveUri(v, item.localUri);
+                if (audioUri == null) return;
+
+                // If this holder is already playing, pause it
+                if (mediaPlayer != null && mediaPlayer.isPlaying()
+                        && currentAudioHolder == h) {
+                    mediaPlayer.pause();
+                    h.playButton.setIconResource(android.R.drawable.ic_media_play);
+                    return;
+                }
+
+                // Stop any previously playing audio
+                if (mediaPlayer != null) {
+                    mediaPlayer.stop();
+                    mediaPlayer.release();
+                    mediaPlayer = null;
+                    if (currentAudioHolder != null) {
+                        currentAudioHolder.playButton.setIconResource(
+                                android.R.drawable.ic_media_play);
+                    }
+                }
+
+                // Start new audio
+                try {
+                    mediaPlayer = new MediaPlayer();
+                    mediaPlayer.setDataSource(v.getContext(),audioUri);
+                    mediaPlayer.prepareAsync();
+                    currentAudioHolder = h;
+                    h.playButton.setIconResource(android.R.drawable.ic_media_pause);
+
+                    mediaPlayer.setOnPreparedListener(mp -> mp.start());
+                    mediaPlayer.setOnCompletionListener(mp -> {
+                        h.playButton.setIconResource(android.R.drawable.ic_media_play);
+                        mediaPlayer.release();
+                        mediaPlayer = null;
+                        currentAudioHolder = null;
+                    });
+                    mediaPlayer.setOnErrorListener((mp, what, extra) -> {
+                        h.playButton.setIconResource(android.R.drawable.ic_media_play);
+                        mediaPlayer.release();
+                        mediaPlayer = null;
+                        currentAudioHolder = null;
+                        return true;
+                    });
+                } catch (Exception e) {
+                    android.util.Log.e("TripItemAdapter", "Audio playback error", e);
+                }
+            });
+        }else if( holder instanceof StepsViewHolder){
+            StepsViewHolder h = (StepsViewHolder) holder;
+            try{
+                org.json.JSONObject meta = new org.json.JSONObject(
+                        item.metadataJson != null ? item.metadataJson : "{}");
+                int steps = meta.optInt("steps", 0);
+                String dayLabel = meta.optString("dayLabel", "");
+                h.dayLabel.setText(dayLabel);
+                h.stepCount.setText(steps + "steps");
+            } catch (Exception e) {
+                h.dayLabel.setText(item.title != null ? item.title : "");
+                h.stepCount.setText("");
+            }
         }
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onItemClick(item);
         });
+    }
+
+    public void releaseMediaPlayer() {
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+            currentAudioHolder = null;
+        }
+    }
+    private Uri resolveUri(View v, String localUri) {
+        Uri parsed = Uri.parse(localUri);
+        // content:// URIs from real trips work directly
+        if ("content".equals(parsed.getScheme())) return parsed;
+        // file:// URIs from mock trips need FileProvider
+        if ("file".equals(parsed.getScheme())) {
+            try {
+                return androidx.core.content.FileProvider.getUriForFile(
+                        v.getContext(),
+                        "com.example.voy.fileprovider",
+                        new java.io.File(parsed.getPath())
+                );
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return parsed;
     }
 
     private void bindImage(android.widget.ImageView iv, String localUri) {
@@ -160,16 +322,19 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         if (newItems != null) items.addAll(newItems);
         notifyDataSetChanged();
     }
-    private void bindPlaceChip(TextView chip, Double lat, Double lng) {
+    private void bindPlaceChip(TextView chip, Double lat, Double lng, String landmark) {
         if (chip == null) return;
-
+        if(landmark != null && !landmark.trim().isEmpty()){
+            chip.setText(landmark);
+            chip.setVisibility(View.VISIBLE);
+            return;
+        }
         if (lat == null || lng == null) {
             chip.setVisibility(View.GONE);
             return;
         }
 
         String key = String.format(Locale.US, "%.3f,%.3f", lat, lng);
-
         String cached = placeCache.get(key);
         if (cached != null) {
             chip.setText(cached);
@@ -223,14 +388,9 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         mapCardView.setClickable(true);
         mapCardView.setOnClickListener(v -> {
-            Uri gmmIntentUri = Uri.parse("geo:" + lat + "," + lng + "?q=" + lat + "," + lng);
-            Intent mapIntent = new Intent(Intent.ACTION_VIEW, gmmIntentUri);
-            // Prefer Google Maps if installed, but not required
-            mapIntent.setPackage("com.google.android.apps.maps");
-            if (mapIntent.resolveActivity(v.getContext().getPackageManager()) == null) {
-                mapIntent.setPackage(null);
-            }
-            v.getContext().startActivity(mapIntent);
+            String url = "https://www.google.com/maps?q=" + lat + "," + lng;
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+            v.getContext().startActivity(intent);
         });
     }
     public TripItemEntity getItem(int position) {

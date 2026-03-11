@@ -1,0 +1,88 @@
+{
+  "days": [
+    {
+      "dayNumber": 1,
+      "label": "Day 1 — Colosseum & Forum",
+      "steps": 11240,
+      "items": [
+        {
+          "filename": "photo1.jpeg",
+          "type": "PHOTO",
+          "lat": 41.8902,
+          "lng": 12.4922,
+          "landmark": "Colosseum"
+        },
+        {
+          "filename": "photo2.jpeg",
+          "type": "PHOTO",
+          "lat": 41.8925,
+          "lng": 12.4853,
+          "landmark": "Roman Forum"
+        },
+        {
+          "filename": "photo3.jpeg",
+          "type": "PHOTO",
+          "lat": 41.9009,
+          "lng": 12.4833,
+          "landmark": "Trevi Fountain"
+        },
+        {
+          "filename": "audio1.mp3",
+          "type": "AUDIO",
+          "lat": 41.8986,
+          "lng": 12.4769,
+          "landmark": "Pantheon"
+        }
+      ]
+    },
+    {
+      "dayNumber": 2,
+      "label": "Day 2 — Vatican",
+      "steps": 14870,
+      "items": [
+        {
+          "filename": "video1.mp4",
+          "type": "VIDEO",
+          "lat": 41.9065,
+          "lng": 12.4536,
+          "landmark": "Vatican Museums"
+        },
+        {
+          "filename": "photo4.jpeg",
+          "type": "PHOTO",
+          "lat": 41.9022,
+          "lng": 12.4539,
+          "landmark": "St. Peter's Basilica"
+        },
+        {
+          "filename": "photo5.jpeg",
+          "type": "PHOTO",
+          "lat": 41.9031,
+          "lng": 12.4663,
+          "landmark": "Castel Sant'Angelo"
+        }
+      ]
+    },
+    {
+      "dayNumber": 3,
+      "label": "Day 3 — Spanish Steps & Trastevere",
+      "steps": 9530,
+      "items": [
+        {
+          "filename": "photo6.jpeg",
+          "type": "PHOTO",
+          "lat": 41.9058,
+          "lng": 12.4823,
+          "landmark": "Spanish Steps"
+        },
+        {
+          "filename": "photo7.jpeg",
+          "type": "PHOTO",
+          "lat": 41.8896,
+          "lng": 12.4700,
+          "landmark": "Trastevere"
+        }
+      ]
+    }
+  ]
+}

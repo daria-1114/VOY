@@ -31,14 +31,16 @@ TO-DO:
 
 
 - filter by video, audio, image
-- ability to add notes on a trip in the beginning
+- ability to add notes on a trip in the beginning 
 - add steps(per day)
-- make a finished entry look more appealing with space for notes and clustered images if they are close to each other(time)
-- create mock trip
+- make a finished entry look more appealing with space for notes and clustered images if they are close to each other(time) and show location for clusters!!!
+- ~~create mock trip~~
 - fix the location not changing for the emulator
 - user can add tickets manually as pdfs and other media files
 - keyboard in login page fix on actual phone
 - do something about audio not being captured 
-- make play buttons responsive for audio and video
+- ~~make play buttons responsive for audio and video~~
 - three random pictures appearing in main for each trip --maybe
+- fix audio card
+
 
