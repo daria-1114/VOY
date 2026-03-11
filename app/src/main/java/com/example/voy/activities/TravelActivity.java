@@ -123,6 +123,9 @@ public class TravelActivity extends AppCompatActivity {
                         .show();
         }
 
-
-
+        @Override
+        protected void onDestroy() {
+                super.onDestroy();
+                if (adapter != null) adapter.releaseMediaPlayer();
+        }
 }

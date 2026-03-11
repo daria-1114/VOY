@@ -24,13 +24,10 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <ImageView
+            <TextureView
                 android:id="@+id/mediaThumb"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="?attr/colorSurfaceVariant"
-                android:scaleType="centerCrop"
-                android:contentDescription="@string/app_name" />
+                android:layout_height="match_parent" />
 
             <View
                 android:layout_width="match_parent"
