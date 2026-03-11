@@ -32,7 +32,7 @@ TO-DO:
 
 - filter by video, audio, image
 - ability to add notes on a trip in the beginning 
-- add steps(per day)
+- ~~add steps(per day)~~
 - make a finished entry look more appealing with space for notes and clustered images if they are close to each other(time) and show location for clusters!!!
 - ~~create mock trip~~
 - fix the location not changing for the emulator
@@ -43,4 +43,4 @@ TO-DO:
 - three random pictures appearing in main for each trip --maybe
 - fix audio card
 
-
+THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!

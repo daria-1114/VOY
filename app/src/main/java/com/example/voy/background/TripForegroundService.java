@@ -5,6 +5,8 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Build;
@@ -61,6 +63,10 @@ public class TripForegroundService extends Service {
     private TripLocationManager  locationManager;
     private MediaScanner     mediaScanner;
     private TripJsonWriter   tripJsonWriter;
+    private SensorManager sensorManager;
+    private SensorEventListener stepListener;
+    private int stepCounterBaseline = -1;
+    private long lastStepDayOffset = -1;
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -101,6 +107,7 @@ public class TripForegroundService extends Service {
             startForeground(NOTIF_ID, buildNotification("Resuming trip capture…"));
             startLocationManager();
             startMediaScanLoop();
+            startStepCounting();
             return START_STICKY;
         }
 
@@ -134,6 +141,7 @@ public class TripForegroundService extends Service {
             startForeground(NOTIF_ID, buildNotification("Capturing trip items…"));
             startLocationManager();
             startMediaScanLoop();
+            startStepCounting();
             return START_STICKY;
         }
 
@@ -181,9 +189,20 @@ public class TripForegroundService extends Service {
 
     @Override
     public void onDestroy() {
+        TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
+        if (state.isValid()) {
+            TripCaptureStateStore.markNeedsResume(this, true);
+            Intent broadcast = new Intent(this, ServiceRestartReceiver.class);
+            sendBroadcast(broadcast);
+        }
         if (tripJsonWriter != null) {
             tripJsonWriter.close(System.currentTimeMillis());
             tripJsonWriter = null;
+        }
+        if (sensorManager != null && stepListener != null) {
+            sensorManager.unregisterListener(stepListener);
+            sensorManager = null;
+            stepListener = null;
         }
         stopCapture();
         locationManager.stop();
@@ -255,6 +274,7 @@ public class TripForegroundService extends Service {
                                     this, lastScanDateAddedSec);
                         }
                     }
+                    saveGpsBasedSteps();
                     Thread.sleep(90_000);
                 } catch (InterruptedException e) {
                     running = false;
@@ -273,12 +293,110 @@ public class TripForegroundService extends Service {
         }
     }
 
+    private void startStepCounting() {
+        sensorManager = (android.hardware.SensorManager)
+                getSystemService(SENSOR_SERVICE);
+        if (sensorManager == null) {
+            Log.d(TAG, "No SensorManager — steps will use GPS estimate");
+            return;
+        }
+
+        android.hardware.Sensor stepSensor = sensorManager.getDefaultSensor(
+                android.hardware.Sensor.TYPE_STEP_COUNTER);
+
+        if (stepSensor != null) {
+            stepListener = new android.hardware.SensorEventListener() {
+                @Override
+                public void onSensorChanged(android.hardware.SensorEvent event) {
+                    int totalSteps = (int) event.values[0];
+                    if (stepCounterBaseline < 0) {
+                        stepCounterBaseline = totalSteps;
+                        return;
+                    }
+                    checkAndSaveSteps(totalSteps - stepCounterBaseline, false);
+                }
+                @Override
+                public void onAccuracyChanged(
+                        android.hardware.Sensor sensor, int accuracy) {}
+            };
+            sensorManager.registerListener(
+                    stepListener, stepSensor,
+                    android.hardware.SensorManager.SENSOR_DELAY_NORMAL);
+            Log.d(TAG, "Step counter sensor registered");
+        } else {
+            Log.d(TAG, "No step sensor — steps will use GPS estimate");
+        }
+    }
+
+    private void checkAndSaveSteps(int steps, boolean isGpsBased) {
+        long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
+        long dayOffset = elapsedMs / TimeUnit.MINUTES.toMillis(2);
+
+        // Only save once per day boundary
+        if (dayOffset == lastStepDayOffset) return;
+        lastStepDayOffset = dayOffset;
+
+        String dayLabel = "Day " + (dayOffset + 1);
+        String title    = dayLabel + " — " + steps + " steps"
+                + (isGpsBased ? " (estimated)" : "");
+        String meta     = buildStepsMeta(steps, dayLabel);
+
+        TripItemEntity stepsItem = new TripItemEntity(
+                UUID.randomUUID().toString(),
+                tripId, userId,
+                TripItemType.STEPS,
+                System.currentTimeMillis(),
+                null, null, null, null,
+                title, meta
+        );
+        tripRepository.insertTripItem(stepsItem);
+        if (tripJsonWriter != null) tripJsonWriter.append(stepsItem);
+        Log.d(TAG, "Saved steps for " + dayLabel + ": " + steps
+                + (isGpsBased ? " (GPS estimated)" : " (sensor)"));
+    }
+
+    private void saveGpsBasedSteps() {
+        // Only used when step sensor is not available
+        if (stepListener != null) return; // sensor is handling it
+        if (locationManager == null) return;
+        int estimatedSteps = locationManager.getEstimatedSteps();
+        Log.d(TAG, "saveGpsBasedSteps called, estimatedSteps=" + estimatedSteps);
+        if (estimatedSteps <= 0) return;
+        checkAndSaveSteps(estimatedSteps, true);
+        locationManager.resetDailyDistance();
+    }
     private void stopRealTrip() {
         if (tripJsonWriter != null) {
             tripJsonWriter.close(System.currentTimeMillis());
             tripJsonWriter = null;
         }
         TripCaptureStateStore.clear(this);
+        if (sensorManager != null && stepListener != null) {
+            sensorManager.unregisterListener(stepListener);
+            sensorManager = null;
+            stepListener = null;
+        }
+        // Save final steps on trip stop
+        if (locationManager != null) {
+            int steps = locationManager.getEstimatedSteps();
+            if (steps > 0) {
+                long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
+                long dayOffset = elapsedMs / TimeUnit.MINUTES.toMillis(2);
+                String dayLabel = "Day " + (dayOffset + 1);
+                String title    = dayLabel + " — " + steps + " steps";
+                TripItemEntity stepsItem = new TripItemEntity(
+                        UUID.randomUUID().toString(),
+                        tripId, userId,
+                        TripItemType.STEPS,
+                        System.currentTimeMillis(),
+                        null, null, null, null,
+                        title,
+                        buildStepsMeta(steps, dayLabel)
+                );
+                tripRepository.insertTripItem(stepsItem);
+                Log.d(TAG, "Saved final steps on trip stop: " + steps);
+            }
+        }
         stopCapture();
         locationManager.stop();
         stopForeground(true);

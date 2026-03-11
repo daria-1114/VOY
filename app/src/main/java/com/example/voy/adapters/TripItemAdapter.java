@@ -180,6 +180,9 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
             bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
 
+            // Reset waveform to static state when holder is reused
+            animateWaveform(h, false);
+
             h.playButton.setOnClickListener(v -> {
                 Uri audioUri = resolveUri(v, item.localUri);
                 if (audioUri == null) return;
@@ -189,10 +192,20 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                         && currentAudioHolder == h) {
                     mediaPlayer.pause();
                     h.playButton.setIconResource(android.R.drawable.ic_media_play);
+                    animateWaveform(h, false);
                     return;
                 }
 
-                // Stop any previously playing audio
+                // If paused on this same holder, resume
+                if (mediaPlayer != null && !mediaPlayer.isPlaying()
+                        && currentAudioHolder == h) {
+                    mediaPlayer.start();
+                    h.playButton.setIconResource(android.R.drawable.ic_media_pause);
+                    animateWaveform(h, true);
+                    return;
+                }
+
+                // Stop any previously playing audio on a different holder
                 if (mediaPlayer != null) {
                     mediaPlayer.stop();
                     mediaPlayer.release();
@@ -200,26 +213,32 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     if (currentAudioHolder != null) {
                         currentAudioHolder.playButton.setIconResource(
                                 android.R.drawable.ic_media_play);
+                        animateWaveform(currentAudioHolder, false);
                     }
                 }
 
                 // Start new audio
                 try {
                     mediaPlayer = new MediaPlayer();
-                    mediaPlayer.setDataSource(v.getContext(),audioUri);
+                    mediaPlayer.setDataSource(v.getContext(), audioUri);
                     mediaPlayer.prepareAsync();
                     currentAudioHolder = h;
                     h.playButton.setIconResource(android.R.drawable.ic_media_pause);
 
-                    mediaPlayer.setOnPreparedListener(mp -> mp.start());
+                    mediaPlayer.setOnPreparedListener(mp -> {
+                        mp.start();
+                        animateWaveform(h, true);
+                    });
                     mediaPlayer.setOnCompletionListener(mp -> {
                         h.playButton.setIconResource(android.R.drawable.ic_media_play);
+                        animateWaveform(h, false);
                         mediaPlayer.release();
                         mediaPlayer = null;
                         currentAudioHolder = null;
                     });
                     mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                         h.playButton.setIconResource(android.R.drawable.ic_media_play);
+                        animateWaveform(h, false);
                         mediaPlayer.release();
                         mediaPlayer = null;
                         currentAudioHolder = null;
@@ -229,7 +248,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     android.util.Log.e("TripItemAdapter", "Audio playback error", e);
                 }
             });
-        }else if( holder instanceof StepsViewHolder){
+        } else if( holder instanceof StepsViewHolder){
             StepsViewHolder h = (StepsViewHolder) holder;
             try{
                 org.json.JSONObject meta = new org.json.JSONObject(
@@ -253,6 +272,35 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             mediaPlayer.release();
             mediaPlayer = null;
             currentAudioHolder = null;
+        }
+        if (currentAudioHolder != null) {
+            animateWaveform(currentAudioHolder, false);
+            currentAudioHolder = null;
+        }
+    }
+    private void animateWaveform(AudioViewHolder h, boolean playing) {
+        android.view.ViewGroup wave = h.itemView.findViewById(R.id.waveContainer);
+        if (wave == null) return;
+
+        for (int i = 0; i < wave.getChildCount(); i++) {
+            android.view.View bar = wave.getChildAt(i);
+            if (playing) {
+                android.animation.ObjectAnimator anim = android.animation.ObjectAnimator
+                        .ofFloat(bar, "scaleY", 1f, 0.3f, 1f);
+                anim.setDuration(600 + (i * 80L));
+                anim.setRepeatCount(android.animation.ObjectAnimator.INFINITE);
+                anim.setRepeatMode(android.animation.ObjectAnimator.REVERSE);
+                anim.setInterpolator(
+                        new android.view.animation.AccelerateDecelerateInterpolator());
+                bar.setTag(anim);
+                anim.start();
+            } else {
+                Object tag = bar.getTag();
+                if (tag instanceof android.animation.ObjectAnimator) {
+                    ((android.animation.ObjectAnimator) tag).cancel();
+                }
+                bar.setScaleY(1f);
+            }
         }
     }
     private Uri resolveUri(View v, String localUri) {
