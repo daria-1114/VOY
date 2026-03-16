@@ -31,16 +31,32 @@ TO-DO:
 
 
 - filter by video, audio, image
-- ability to add notes on a trip in the beginning 
+- ~~ability to add notes on a trip in the beginning~~ 
 - ~~add steps(per day)~~
-- make a finished entry look more appealing with space for notes and clustered images if they are close to each other(time) and show location for clusters!!!
+
+- ~~make a finished entry look more appealing with space for notes and clustered images if they are close to each other(time) and show location for clusters!!!~~
+- ~~user can add tickets manually as pdfs and other media files~~
+- media captured (number) appears in the trip in main
+
+
 - ~~create mock trip~~
-- fix the location not changing for the emulator
-- user can add tickets manually as pdfs and other media files
+- ~~fix the location not changing for the emulator~~
 - keyboard in login page fix on actual phone
 - do something about audio not being captured 
 - ~~make play buttons responsive for audio and video~~
-- three random pictures appearing in main for each trip --maybe
-- fix audio card
+- ~~fix audio card~~
+- db for more than one device
 
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
+the service is only location because dataSync kills the service after 6 hours
+
+!! change export schema for the db to true 
+
+
+
+export trip to json:
+adb pull /sdcard/Android/data/com.example.voy/files/Voy/ D:\Desktop\Voy
+
+sdcard → Android → data → com.example.voy → files → Voy
+
+adb pull /sdcard/Android/data/com.example.voy/files/Voy/trip_<tripId>.json C:\Users\YourUsername\Desktop\ -- only for a specific one

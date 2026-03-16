@@ -5,9 +5,9 @@ import android.content.Context;
 import androidx.room.Database;
 import androidx.room.Room;
 import androidx.room.RoomDatabase;
-import androidx.room.TypeConverter;
 import androidx.room.TypeConverters;
 
+import com.example.voy.data.converter.StringListConverter;
 import com.example.voy.data.converter.TripItemTypeConverter;
 import com.example.voy.data.dao.TripDao;
 import com.example.voy.data.dao.TripItemDao;
@@ -16,10 +16,10 @@ import com.example.voy.data.entities.TripItemEntity;
 
 @Database(
         entities = {TripEntity.class, TripItemEntity.class},
-        version = 1,
-        exportSchema = true
+        version = 2,
+        exportSchema = false
 )
-@TypeConverters({TripItemTypeConverter.class})
+@TypeConverters({TripItemTypeConverter.class, StringListConverter.class})
 public abstract class AppDatabase extends RoomDatabase {
     private static volatile AppDatabase INSTANCE;
     private static final String DB_NAME = "voy_journal_db";
