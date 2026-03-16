@@ -80,6 +80,34 @@ public class TripRepository {
         dbExecutor.execute(() -> tripDao.updateTripTitle(userId, tripId, newTitle));
     }
 
+    public void updateTripNotes(String userId, String tripId, String notes) {
+        dbExecutor.execute(() -> tripDao.updateNotes(userId, tripId, notes));
+    }
+
+    public void addAttachment(String userId, String tripId, String uri) {
+        dbExecutor.execute(() -> {
+            TripEntity trip = tripDao.getTripSync(userId, tripId);
+            if (trip == null) return;
+            java.util.List<String> list = trip.attachments != null
+                    ? new java.util.ArrayList<>(trip.attachments) : new java.util.ArrayList<>();
+            if (!list.contains(uri)) list.add(uri);
+            tripDao.updateAttachments(userId, tripId, list);
+        });
+    }
+
+    public void removeAttachment(String userId, String tripId, String uri) {
+        dbExecutor.execute(() -> {
+            TripEntity trip = tripDao.getTripSync(userId, tripId);
+            if (trip == null) return;
+            java.util.List<String> list = trip.attachments != null
+                    ? new java.util.ArrayList<>(trip.attachments) : new java.util.ArrayList<>();
+            list.remove(uri);
+            tripDao.updateAttachments(userId, tripId, list);
+        });
+    }
+    public LiveData<TripEntity> observeTrip(String userId, String tripId) {
+        return tripDao.observeTrip(userId, tripId);
+    }
     public interface ExistsCallback {
         void onResult(boolean exists);
     }

@@ -36,5 +36,16 @@ public interface TripDao {
     @Query("UPDATE trips SET title = :newTitle WHERE userId = :userId AND id = :tripId")
     void updateTripTitle(String userId, String tripId, String newTitle);
 
+    @Query("UPDATE trips SET notes = :notes WHERE userId = :userId AND id = :tripId")
+    void updateNotes(String userId, String tripId, String notes);
+
+    @Query("UPDATE trips SET attachments = :attachments WHERE userId = :userId AND id = :tripId")
+    void updateAttachments(String userId, String tripId, List<String> attachments);
+
+    @Query("SELECT * FROM trips WHERE userId = :userId AND id = :tripId LIMIT 1")
+    TripEntity getTripSync(String userId, String tripId);
+
+    @Query("SELECT * FROM trips WHERE userId = :userId AND id = :tripId LIMIT 1")
+    LiveData<TripEntity> observeTrip(String userId, String tripId);
 
 }

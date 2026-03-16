@@ -1,4 +1,5 @@
 package com.example.voy.adapters;
+
 import android.content.Intent;
 import android.location.Address;
 import android.location.Geocoder;
@@ -8,6 +9,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -17,12 +19,12 @@ import com.bumptech.glide.Glide;
 import com.example.voy.BuildConfig;
 import com.example.voy.R;
 import com.example.voy.data.entities.TripItemEntity;
+import com.example.voy.enums.TripItemType;
 import com.example.voy.viewHolders.AudioViewHolder;
+import com.example.voy.viewHolders.ClusterViewHolder;
 import com.example.voy.viewHolders.PhotoViewHolder;
 import com.example.voy.viewHolders.StepsViewHolder;
 import com.example.voy.viewHolders.VideoViewHolder;
-
-import org.w3c.dom.Text;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -32,19 +34,52 @@ import java.util.Map;
 
 public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
-    private final List<TripItemEntity> items = new ArrayList<>();
+    // -------------------------------------------------------------------------
+    // Display item wrapper
+    // -------------------------------------------------------------------------
 
-    private static final int TYPE_PHOTO = 1;
-    private static final int TYPE_VIDEO = 2;
-    private static final int TYPE_AUDIO = 3;
-    private static final int TYPE_STEPS = 4;
+    private static class DisplayItem {
+        final TripItemEntity primary;
+        final List<TripItemEntity> cluster;
+        boolean expanded;
+
+        DisplayItem(TripItemEntity item) {
+            this.primary = item;
+            this.cluster = null;
+            this.expanded = false;
+        }
+
+        DisplayItem(List<TripItemEntity> cluster) {
+            this.primary = cluster.get(0);
+            this.cluster = cluster;
+            this.expanded = false;
+        }
+
+        boolean isCluster() {
+            return cluster != null && cluster.size() > 1;
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Fields
+    // -------------------------------------------------------------------------
+
+    private final List<DisplayItem> displayItems = new ArrayList<>();
+
+    private static final int TYPE_PHOTO   = 1;
+    private static final int TYPE_VIDEO   = 2;
+    private static final int TYPE_AUDIO   = 3;
+    private static final int TYPE_STEPS   = 4;
+    private static final int TYPE_CLUSTER = 5;
+
+    private static final long CLUSTER_WINDOW_MS = 5 * 60 * 1000L;
+
     private final Map<String, String> placeCache = new HashMap<>();
     private MediaPlayer mediaPlayer;
     private AudioViewHolder currentAudioHolder;
+
     public interface OnItemClickedListener {
         void onItemClick(TripItemEntity item);
-        // Optional: if you want separate click events later
-        // void onAudioPlayClick(TripItemEntity item);
     }
 
     private final OnItemClickedListener listener;
@@ -53,19 +88,19 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         this.listener = listener;
     }
 
+    // -------------------------------------------------------------------------
+    // RecyclerView overrides
+    // -------------------------------------------------------------------------
+
     @Override
     public int getItemViewType(int position) {
-        TripItemEntity item = items.get(position);
-        switch (item.type) {
-            case VIDEO:
-                return TYPE_VIDEO;
-            case AUDIO:
-                return TYPE_AUDIO;
-            case STEPS:
-                return TYPE_STEPS;
-            case PHOTO:
-            default:
-                return TYPE_PHOTO;
+        DisplayItem di = displayItems.get(position);
+        if (di.isCluster()) return TYPE_CLUSTER;
+        switch (di.primary.type) {
+            case VIDEO: return TYPE_VIDEO;
+            case AUDIO: return TYPE_AUDIO;
+            case STEPS: return TYPE_STEPS;
+            case PHOTO: default: return TYPE_PHOTO;
         }
     }
 
@@ -73,37 +108,90 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     @Override
     public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         LayoutInflater inflater = LayoutInflater.from(parent.getContext());
-
         if (viewType == TYPE_PHOTO) {
-            View v = inflater.inflate(R.layout.trip_item_image, parent, false);
-            return new PhotoViewHolder(v);
+            return new PhotoViewHolder(
+                    inflater.inflate(R.layout.trip_item_image, parent, false));
         } else if (viewType == TYPE_VIDEO) {
-            View v = inflater.inflate(R.layout.trip_item_video, parent, false);
-            return new VideoViewHolder(v);
-        }else if(viewType == TYPE_STEPS){
-            View v = inflater.inflate(R.layout.trip_item_steps, parent, false);
-            return new StepsViewHolder(v);
-        }else {
-            View v = inflater.inflate(R.layout.trip_item_audio, parent, false);
-            return new AudioViewHolder(v);
+            return new VideoViewHolder(
+                    inflater.inflate(R.layout.trip_item_video, parent, false));
+        } else if (viewType == TYPE_STEPS) {
+            return new StepsViewHolder(
+                    inflater.inflate(R.layout.trip_item_steps, parent, false));
+        } else if (viewType == TYPE_CLUSTER) {
+            return new ClusterViewHolder(
+                    inflater.inflate(R.layout.trip_item_cluster, parent, false));
+        } else {
+            return new AudioViewHolder(
+                    inflater.inflate(R.layout.trip_item_audio, parent, false));
         }
     }
 
     @Override
     public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
-        TripItemEntity item = items.get(position);
+        DisplayItem di = displayItems.get(position);
+        TripItemEntity item = di.primary;
 
-        if (holder instanceof PhotoViewHolder) {
+        if (holder instanceof ClusterViewHolder) {
+            ClusterViewHolder h = (ClusterViewHolder) holder;
+
+            if (di.expanded) {
+                h.collapsedContainer.setVisibility(View.GONE);
+                h.expandedContainer.setVisibility(View.VISIBLE);
+                h.expandedContainer.removeAllViews();
+
+                float density = h.itemView.getContext()
+                        .getResources().getDisplayMetrics().density;
+
+                for (TripItemEntity photo : di.cluster) {
+                    ImageView iv = new ImageView(h.itemView.getContext());
+                    LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            (int)(220 * density));
+                    lp.bottomMargin = (int)(4 * density);
+                    iv.setLayoutParams(lp);
+                    iv.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    Uri resolved = resolveUri(h.itemView, photo.localUri);
+                    Glide.with(iv.getContext())
+                            .load(resolved != null ? resolved : Uri.parse(photo.localUri))
+                            .centerCrop()
+                            .into(iv);
+                    h.expandedContainer.addView(iv);
+                }
+
+                h.itemView.setOnClickListener(v -> {
+                    di.expanded = false;
+                    notifyItemChanged(holder.getAdapterPosition());
+                });
+
+            } else {
+                h.expandedContainer.setVisibility(View.GONE);
+                h.collapsedContainer.setVisibility(View.VISIBLE);
+                bindImage(h.primaryImage, item.localUri);
+
+                int extra = di.cluster.size() - 1;
+                h.extraBadge.setVisibility(View.VISIBLE);
+                h.extraBadge.setText("+" + extra);
+
+                bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
+                bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
+                attachOpenMapsClick(h.mapCard, item.lat, item.lng);
+
+                h.itemView.setOnClickListener(v -> {
+                    di.expanded = true;
+                    notifyItemChanged(holder.getAdapterPosition());
+                });
+            }
+
+        } else if (holder instanceof PhotoViewHolder) {
             PhotoViewHolder h = (PhotoViewHolder) holder;
             bindImage(h.imageView, item.localUri);
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
-            bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
-        }
-        else if (holder instanceof VideoViewHolder) {
+            h.placeChip.setVisibility(View.GONE);
+
+        } else if (holder instanceof VideoViewHolder) {
             VideoViewHolder h = (VideoViewHolder) holder;
 
-            // Stop and release any previous playback on this holder
             if (h.mediaPlayer != null) {
                 h.mediaPlayer.release();
                 h.mediaPlayer = null;
@@ -115,20 +203,18 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
             h.videoView.setSurfaceTextureListener(
                     new android.view.TextureView.SurfaceTextureListener() {
-
                         @Override
                         public void onSurfaceTextureAvailable(
                                 android.graphics.SurfaceTexture surface, int w, int h2) {
                             try {
-                                android.media.MediaPlayer mp = new android.media.MediaPlayer();
+                                android.media.MediaPlayer mp =
+                                        new android.media.MediaPlayer();
                                 h.mediaPlayer = mp;
                                 mp.setSurface(new android.view.Surface(surface));
                                 mp.setDataSource(h.itemView.getContext(), videoUri);
                                 mp.prepareAsync();
-                                mp.setOnPreparedListener(prepared -> {
-                                    // Seek to first frame as preview, don't autoplay
-                                    prepared.seekTo(500);
-                                });
+                                mp.setOnPreparedListener(prepared ->
+                                        prepared.seekTo(500));
                                 mp.setOnCompletionListener(completed -> {
                                     if (h.playOverlay != null)
                                         h.playOverlay.setVisibility(View.VISIBLE);
@@ -173,21 +259,18 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
             bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
-        }
-        else if (holder instanceof AudioViewHolder) {
+
+        } else if (holder instanceof AudioViewHolder) {
             AudioViewHolder h = (AudioViewHolder) holder;
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
             bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
-
-            // Reset waveform to static state when holder is reused
             animateWaveform(h, false);
 
             h.playButton.setOnClickListener(v -> {
                 Uri audioUri = resolveUri(v, item.localUri);
                 if (audioUri == null) return;
 
-                // If this holder is already playing, pause it
                 if (mediaPlayer != null && mediaPlayer.isPlaying()
                         && currentAudioHolder == h) {
                     mediaPlayer.pause();
@@ -196,7 +279,6 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     return;
                 }
 
-                // If paused on this same holder, resume
                 if (mediaPlayer != null && !mediaPlayer.isPlaying()
                         && currentAudioHolder == h) {
                     mediaPlayer.start();
@@ -205,7 +287,6 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     return;
                 }
 
-                // Stop any previously playing audio on a different holder
                 if (mediaPlayer != null) {
                     mediaPlayer.stop();
                     mediaPlayer.release();
@@ -217,7 +298,6 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     }
                 }
 
-                // Start new audio
                 try {
                     mediaPlayer = new MediaPlayer();
                     mediaPlayer.setDataSource(v.getContext(), audioUri);
@@ -248,36 +328,104 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     android.util.Log.e("TripItemAdapter", "Audio playback error", e);
                 }
             });
-        } else if( holder instanceof StepsViewHolder){
+
+        } else if (holder instanceof StepsViewHolder) {
             StepsViewHolder h = (StepsViewHolder) holder;
-            try{
+            try {
                 org.json.JSONObject meta = new org.json.JSONObject(
                         item.metadataJson != null ? item.metadataJson : "{}");
                 int steps = meta.optInt("steps", 0);
                 String dayLabel = meta.optString("dayLabel", "");
                 h.dayLabel.setText(dayLabel);
-                h.stepCount.setText(steps + "steps");
+                h.stepCount.setText(steps + " steps");
             } catch (Exception e) {
                 h.dayLabel.setText(item.title != null ? item.title : "");
                 h.stepCount.setText("");
             }
         }
-        holder.itemView.setOnClickListener(v -> {
-            if (listener != null) listener.onItemClick(item);
-        });
+
+        if (!(holder instanceof ClusterViewHolder)) {
+            holder.itemView.setOnClickListener(v -> {
+                if (listener != null) listener.onItemClick(item);
+            });
+        }
     }
+
+    @Override
+    public int getItemCount() {
+        return displayItems.size();
+    }
+
+    // -------------------------------------------------------------------------
+    // Data
+    // -------------------------------------------------------------------------
+
+    public void setItems(List<TripItemEntity> newItems) {
+        displayItems.clear();
+
+        if (newItems == null || newItems.isEmpty()) {
+            notifyDataSetChanged();
+            return;
+        }
+
+        List<TripItemEntity> pendingCluster = new ArrayList<>();
+
+        for (TripItemEntity item : newItems) {
+            if (item.type != TripItemType.PHOTO) {
+                if (!pendingCluster.isEmpty()) {
+                    displayItems.add(pendingCluster.size() == 1
+                            ? new DisplayItem(pendingCluster.get(0))
+                            : new DisplayItem(new ArrayList<>(pendingCluster)));
+                    pendingCluster.clear();
+                }
+                displayItems.add(new DisplayItem(item));
+            } else {
+                if (pendingCluster.isEmpty()) {
+                    pendingCluster.add(item);
+                } else {
+                    long lastTs = pendingCluster.get(
+                            pendingCluster.size() - 1).timestamp;
+                    if (Math.abs(item.timestamp - lastTs) <= CLUSTER_WINDOW_MS) {
+                        pendingCluster.add(item);
+                    } else {
+                        displayItems.add(pendingCluster.size() == 1
+                                ? new DisplayItem(pendingCluster.get(0))
+                                : new DisplayItem(new ArrayList<>(pendingCluster)));
+                        pendingCluster.clear();
+                        pendingCluster.add(item);
+                    }
+                }
+            }
+        }
+
+        if (!pendingCluster.isEmpty()) {
+            displayItems.add(pendingCluster.size() == 1
+                    ? new DisplayItem(pendingCluster.get(0))
+                    : new DisplayItem(new ArrayList<>(pendingCluster)));
+        }
+
+        notifyDataSetChanged();
+    }
+
+    public TripItemEntity getItem(int position) {
+        return displayItems.get(position).primary;
+    }
+
+    // -------------------------------------------------------------------------
+    // Helpers
+    // -------------------------------------------------------------------------
 
     public void releaseMediaPlayer() {
         if (mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null;
-            currentAudioHolder = null;
         }
         if (currentAudioHolder != null) {
             animateWaveform(currentAudioHolder, false);
             currentAudioHolder = null;
         }
     }
+
     private void animateWaveform(AudioViewHolder h, boolean playing) {
         android.view.ViewGroup wave = h.itemView.findViewById(R.id.waveContainer);
         if (wave == null) return;
@@ -303,18 +451,17 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
         }
     }
+
     private Uri resolveUri(View v, String localUri) {
+        if (localUri == null) return null;
         Uri parsed = Uri.parse(localUri);
-        // content:// URIs from real trips work directly
         if ("content".equals(parsed.getScheme())) return parsed;
-        // file:// URIs from mock trips need FileProvider
         if ("file".equals(parsed.getScheme())) {
             try {
                 return androidx.core.content.FileProvider.getUriForFile(
                         v.getContext(),
                         "com.example.voy.fileprovider",
-                        new java.io.File(parsed.getPath())
-                );
+                        new java.io.File(parsed.getPath()));
             } catch (Exception e) {
                 return null;
             }
@@ -322,37 +469,37 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         return parsed;
     }
 
-    private void bindImage(android.widget.ImageView iv, String localUri) {
+    private void bindImage(ImageView iv, String localUri) {
         if (iv == null) return;
-
         if (localUri == null || localUri.trim().isEmpty()) {
             iv.setImageDrawable(null);
             return;
         }
-
         Glide.with(iv.getContext())
                 .load(Uri.parse(localUri))
                 .centerCrop()
                 .into(iv);
     }
 
-    private void bindMapPreview(android.widget.ImageView iv, com.google.android.material.card.MaterialCardView card, Double lat, Double lng){
-        if(iv == null || card == null) return;
-        if(lat == null || lng == null){
+    private void bindMapPreview(ImageView iv,
+                                com.google.android.material.card.MaterialCardView card,
+                                Double lat, Double lng) {
+        if (card == null) return;
+        if (lat == null || lng == null) {
             card.setVisibility(View.GONE);
-            iv.setImageDrawable(null);
             return;
         }
         card.setVisibility(View.VISIBLE);
-        String url =
-                "https://maps.googleapis.com/maps/api/staticmap"
-                        + "?center=" + lat + "," + lng
-                        + "&zoom=15"
-                        + "&size=300x440"
-                        + "&scale=2"
-                        + "&maptype=roadmap"
-                        + "&markers=color:red%7C" + lat + "," + lng
-                        + "&key=" + BuildConfig.MAPS_API_KEY;
+        if (iv == null) return;
+
+        String url = "https://maps.googleapis.com/maps/api/staticmap"
+                + "?center=" + lat + "," + lng
+                + "&zoom=15"
+                + "&size=300x440"
+                + "&scale=2"
+                + "&maptype=roadmap"
+                + "&markers=color:red%7C" + lat + "," + lng
+                + "&key=" + BuildConfig.MAPS_API_KEY;
 
         Glide.with(iv.getContext())
                 .load(url)
@@ -360,19 +507,10 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 .into(iv);
     }
 
-    @Override
-    public int getItemCount() {
-        return items.size();
-    }
-
-    public void setItems(List<TripItemEntity> newItems) {
-        items.clear();
-        if (newItems != null) items.addAll(newItems);
-        notifyDataSetChanged();
-    }
-    private void bindPlaceChip(TextView chip, Double lat, Double lng, String landmark) {
+    private void bindPlaceChip(TextView chip, Double lat, Double lng,
+                               String landmark) {
         if (chip == null) return;
-        if(landmark != null && !landmark.trim().isEmpty()){
+        if (landmark != null && !landmark.trim().isEmpty()) {
             chip.setText(landmark);
             chip.setVisibility(View.VISIBLE);
             return;
@@ -390,7 +528,6 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             return;
         }
 
-        // Not cached yet: hide chip until we fetch a label
         chip.setVisibility(View.GONE);
 
         new Thread(() -> {
@@ -398,18 +535,15 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             try {
                 Geocoder geocoder = new Geocoder(chip.getContext(), Locale.getDefault());
                 List<Address> results = geocoder.getFromLocation(lat, lng, 1);
-
                 if (results != null && !results.isEmpty()) {
                     Address a = results.get(0);
-
-                    String sub = a.getSubLocality();
-                    String city = a.getLocality();
-                    String admin = a.getAdminArea();
+                    String sub     = a.getSubLocality();
+                    String city    = a.getLocality();
+                    String admin   = a.getAdminArea();
                     String country = a.getCountryName();
-
-                    if (sub != null && !sub.isEmpty()) label = sub;
-                    else if (city != null && !city.isEmpty()) label = city;
-                    else if (admin != null && !admin.isEmpty()) label = admin;
+                    if (sub != null && !sub.isEmpty())              label = sub;
+                    else if (city != null && !city.isEmpty())       label = city;
+                    else if (admin != null && !admin.isEmpty())     label = admin;
                     else if (country != null && !country.isEmpty()) label = country;
                 }
             } catch (Exception ignored) {}
@@ -417,7 +551,6 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             if (label != null) {
                 placeCache.put(key, label);
                 String finalLabel = label;
-
                 chip.post(() -> {
                     chip.setText(finalLabel);
                     chip.setVisibility(View.VISIBLE);
@@ -425,23 +558,19 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
         }).start();
     }
+
     private void attachOpenMapsClick(View mapCardView, Double lat, Double lng) {
         if (mapCardView == null) return;
-
         if (lat == null || lng == null) {
             mapCardView.setOnClickListener(null);
             mapCardView.setClickable(false);
             return;
         }
-
         mapCardView.setClickable(true);
         mapCardView.setOnClickListener(v -> {
             String url = "https://www.google.com/maps?q=" + lat + "," + lng;
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             v.getContext().startActivity(intent);
         });
-    }
-    public TripItemEntity getItem(int position) {
-        return items.get(position);
     }
 }

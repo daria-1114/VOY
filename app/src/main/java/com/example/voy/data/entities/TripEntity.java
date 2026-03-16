@@ -2,8 +2,14 @@ package com.example.voy.data.entities;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.room.ColumnInfo;
 import androidx.room.Entity;
 import androidx.room.PrimaryKey;
+import androidx.room.TypeConverters;
+
+import com.example.voy.data.converter.StringListConverter;
+
+import java.util.List;
 
 @Entity(tableName = "trips")
 public class TripEntity {
@@ -18,6 +24,12 @@ public class TripEntity {
     public Long endTime;
     @NonNull
     public String status; //active or finished
+    @ColumnInfo(name = "notes")
+    public String notes;
+
+    @ColumnInfo(name = "attachments")
+    @TypeConverters(StringListConverter.class)
+    public List<String> attachments;
 
     public TripEntity(long startTime, @NonNull String id, @Nullable Long endTime, @NonNull String status, String title, @NonNull String userId) {
         this.startTime = startTime;

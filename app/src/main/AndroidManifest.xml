@@ -22,7 +22,6 @@
         android:maxSdkVersion="32"/>
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
@@ -37,7 +36,7 @@
         <service
             android:name=".background.TripForegroundService"
             android:exported="false"
-            android:foregroundServiceType="dataSync|location" />
+            android:foregroundServiceType="location" />
 
         <receiver
             android:name=".background.BootReceiver"

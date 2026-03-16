@@ -59,4 +59,5 @@ dependencies {
     annotationProcessor("androidx.room:room-compiler:2.6.1")
     implementation(platform("com.google.firebase:firebase-bom:32.7.4"))
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.code.gson:gson:2.10.1")
 }

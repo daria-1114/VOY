@@ -67,6 +67,7 @@ public class TripForegroundService extends Service {
     private SensorEventListener stepListener;
     private int stepCounterBaseline = -1;
     private long lastStepDayOffset = -1;
+    private final java.util.Set<String> writtenUris = new java.util.HashSet<>();
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -253,7 +254,8 @@ public class TripForegroundService extends Service {
 
             tripRepository.insertTripItem(item);
 
-            if (tripJsonWriter != null) {
+            if (tripJsonWriter != null && !writtenUris.contains(item.localUri)) {
+                writtenUris.add(item.localUri);
                 tripJsonWriter.append(item);
             }
         });
@@ -291,6 +293,7 @@ public class TripForegroundService extends Service {
             scanLoopFuture.cancel(true);
             scanLoopFuture = null;
         }
+        writtenUris.clear();
     }
 
     private void startStepCounting() {
