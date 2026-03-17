@@ -47,6 +47,10 @@ TO-DO:
 - ~~fix audio card~~
 - db for more than one device
 
+- button for deleting items instead of just clicking on them
+- pdf documents 
+
+
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
 

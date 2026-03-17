@@ -17,7 +17,7 @@ public class TripItemTypeConverter {
             return TripItemType.valueOf(value);
         } catch (IllegalArgumentException e) {
             // compatibility with old DB values
-            if ("MEDIA".equals(value)) return TripItemType.PHOTO;  // or choose a default
+            if ("MEDIA".equals(value)) return TripItemType.PHOTO;
             return TripItemType.NOTE;
         }
     }

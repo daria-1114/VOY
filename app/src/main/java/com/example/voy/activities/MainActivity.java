@@ -83,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
 
                         mediaOk = (ext != null && ext);
 
-                        notifOk = true; // no notif runtime perm pre-33
+                        notifOk = true;
                     }
                     if(mediaOk && notifOk && locOk && pendingStartTrip!= null){
                         pendingStartTrip.run();

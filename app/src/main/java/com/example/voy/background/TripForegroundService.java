@@ -87,13 +87,15 @@ public class TripForegroundService extends Service {
         Log.d(TAG, "onStartCommand action="
                 + (intent == null ? "null" : intent.getAction()));
 
-        // ── System restart — resume from saved state ──────────────────────
+        // FOR RESTART, FROM STATE STORE
         if (intent == null || intent.getAction() == null) {
             TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
+
             if (!state.isValid()) {
                 stopSelf();
                 return START_NOT_STICKY;
             }
+
             userId          = state.userId;
             tripId          = state.tripId;
             tripStartTimeMs = state.startTimeMs;
@@ -114,7 +116,7 @@ public class TripForegroundService extends Service {
 
         String action = intent.getAction();
 
-        // ── ACTION_START ──────────────────────────────────────────────────
+        // NORMAL START
         if (ACTION_START.equals(action)) {
             String incomingUserId = intent.getStringExtra(EXTRA_USER_ID);
             String incomingTripId = intent.getStringExtra(EXTRA_TRIP_ID);
@@ -190,6 +192,7 @@ public class TripForegroundService extends Service {
 
     @Override
     public void onDestroy() {
+        super.onDestroy();
         TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
         if (state.isValid()) {
             TripCaptureStateStore.markNeedsResume(this, true);
@@ -208,7 +211,6 @@ public class TripForegroundService extends Service {
         stopCapture();
         locationManager.stop();
         executor.shutdownNow();
-        super.onDestroy();
     }
 
     @Nullable
@@ -216,20 +218,14 @@ public class TripForegroundService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
-
-    // -------------------------------------------------------------------------
     // Real trip
-    // -------------------------------------------------------------------------
-
     private void startLocationManager() {
         locationManager.start(getMainLooper());
     }
-
     private void startMediaScanLoop() {
         if (running) return;
         running = true;
 
-        // Build scanner with a callback — called for every new file found
         mediaScanner = new MediaScanner(getApplicationContext(), scannedItem -> {
             Location loc = locationManager.getLastLocation();
             Double lat = null, lng = null;
@@ -335,7 +331,6 @@ public class TripForegroundService extends Service {
         long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
         long dayOffset = elapsedMs / TimeUnit.MINUTES.toMillis(2);
 
-        // Only save once per day boundary
         if (dayOffset == lastStepDayOffset) return;
         lastStepDayOffset = dayOffset;
 
@@ -359,8 +354,7 @@ public class TripForegroundService extends Service {
     }
 
     private void saveGpsBasedSteps() {
-        // Only used when step sensor is not available
-        if (stepListener != null) return; // sensor is handling it
+        if (stepListener != null) return;
         if (locationManager == null) return;
         int estimatedSteps = locationManager.getEstimatedSteps();
         Log.d(TAG, "saveGpsBasedSteps called, estimatedSteps=" + estimatedSteps);
@@ -405,11 +399,7 @@ public class TripForegroundService extends Service {
         stopForeground(true);
         stopSelf();
     }
-
-    // -------------------------------------------------------------------------
     // Mock trip — reads res/raw/mock_trip.json, inserts into Room
-    // -------------------------------------------------------------------------
-
     private void runMockTrip(String simUserId, String simTripId, long simStartMs) {
         Log.d(TAG, "Mock trip starting for tripId=" + simTripId);
         try {
@@ -527,11 +517,7 @@ public class TripForegroundService extends Service {
             return null;
         }
     }
-
-    // -------------------------------------------------------------------------
     // Notification
-    // -------------------------------------------------------------------------
-
     private Notification buildNotification(String text) {
         return new NotificationCompat.Builder(this, CHANNEL_ID)
                 .setSmallIcon(R.drawable.baseline_not_started_24)
