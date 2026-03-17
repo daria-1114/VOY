@@ -138,7 +138,11 @@ public class TravelActivity extends AppCompatActivity {
 
                 // Trip items RecyclerView
                 recyclerView = findViewById(R.id.recyclerViewTripItems);
-                recyclerView.setLayoutManager(new LinearLayoutManager(this));
+                LinearLayoutManager llm = new LinearLayoutManager(this);
+                llm.setInitialPrefetchItemCount(4);
+                recyclerView.setLayoutManager(llm);
+                recyclerView.setHasFixedSize(false);
+                recyclerView.setItemViewCacheSize(0);
                 adapter = new TripItemAdapter(item -> showDeleteDialog(item));
                 recyclerView.setAdapter(adapter);
 

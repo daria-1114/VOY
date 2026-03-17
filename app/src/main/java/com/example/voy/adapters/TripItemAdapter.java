@@ -65,7 +65,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     // -------------------------------------------------------------------------
 
     private final List<DisplayItem> displayItems = new ArrayList<>();
-
+    private final java.util.Set<String> expandedClusters = new java.util.HashSet<>();
     private static final int TYPE_PHOTO   = 1;
     private static final int TYPE_VIDEO   = 2;
     private static final int TYPE_AUDIO   = 3;
@@ -127,7 +127,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     }
 
     @Override
-    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position ) {
         DisplayItem di = displayItems.get(position);
         TripItemEntity item = di.primary;
 
@@ -136,6 +136,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
             if (di.expanded) {
                 h.collapsedContainer.setVisibility(View.GONE);
+                h.mapCard.setVisibility(View.GONE);
                 h.expandedContainer.setVisibility(View.VISIBLE);
                 h.expandedContainer.removeAllViews();
 
@@ -160,7 +161,11 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
                 h.itemView.setOnClickListener(v -> {
                     di.expanded = false;
-                    notifyItemChanged(holder.getAdapterPosition());
+                    expandedClusters.remove(di.primary.localUri);
+                    int pos = holder.getAdapterPosition();
+                    if (pos != RecyclerView.NO_ID) {
+                        notifyItemChanged(pos, "collapse");
+                    }
                 });
 
             } else {
@@ -178,7 +183,11 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
                 h.itemView.setOnClickListener(v -> {
                     di.expanded = true;
-                    notifyItemChanged(holder.getAdapterPosition());
+                    expandedClusters.add(di.primary.localUri);
+                    int pos = holder.getAdapterPosition();
+                    if (pos != RecyclerView.NO_ID) {
+                        notifyItemChanged(pos, "expand");
+                    }
                 });
             }
 
@@ -350,6 +359,11 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             });
         }
     }
+    @Override
+    public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder,
+                                 int position, @NonNull List<Object> payloads) {
+        onBindViewHolder(holder, position);
+    }
 
     @Override
     public int getItemCount() {
@@ -359,7 +373,6 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     // -------------------------------------------------------------------------
     // Data
     // -------------------------------------------------------------------------
-
     public void setItems(List<TripItemEntity> newItems) {
         displayItems.clear();
 
@@ -373,9 +386,12 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         for (TripItemEntity item : newItems) {
             if (item.type != TripItemType.PHOTO) {
                 if (!pendingCluster.isEmpty()) {
-                    displayItems.add(pendingCluster.size() == 1
+                    DisplayItem di = pendingCluster.size() == 1
                             ? new DisplayItem(pendingCluster.get(0))
-                            : new DisplayItem(new ArrayList<>(pendingCluster)));
+                            : new DisplayItem(new ArrayList<>(pendingCluster));
+                    if (di.isCluster())
+                        di.expanded = expandedClusters.contains(di.primary.localUri);
+                    displayItems.add(di);
                     pendingCluster.clear();
                 }
                 displayItems.add(new DisplayItem(item));
@@ -388,9 +404,12 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                     if (Math.abs(item.timestamp - lastTs) <= CLUSTER_WINDOW_MS) {
                         pendingCluster.add(item);
                     } else {
-                        displayItems.add(pendingCluster.size() == 1
+                        DisplayItem di = pendingCluster.size() == 1
                                 ? new DisplayItem(pendingCluster.get(0))
-                                : new DisplayItem(new ArrayList<>(pendingCluster)));
+                                : new DisplayItem(new ArrayList<>(pendingCluster));
+                        if (di.isCluster())
+                            di.expanded = expandedClusters.contains(di.primary.localUri);
+                        displayItems.add(di);
                         pendingCluster.clear();
                         pendingCluster.add(item);
                     }
@@ -399,16 +418,15 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         }
 
         if (!pendingCluster.isEmpty()) {
-            displayItems.add(pendingCluster.size() == 1
+            DisplayItem di = pendingCluster.size() == 1
                     ? new DisplayItem(pendingCluster.get(0))
-                    : new DisplayItem(new ArrayList<>(pendingCluster)));
+                    : new DisplayItem(new ArrayList<>(pendingCluster));
+            if (di.isCluster())
+                di.expanded = expandedClusters.contains(di.primary.localUri);
+            displayItems.add(di);
         }
 
         notifyDataSetChanged();
-    }
-
-    public TripItemEntity getItem(int position) {
-        return displayItems.get(position).primary;
     }
 
     // -------------------------------------------------------------------------
