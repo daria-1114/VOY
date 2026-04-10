@@ -49,6 +49,11 @@ TO-DO:
 
 - button for deleting items instead of just clicking on them
 - pdf documents 
+- api narrative generation for pictures & video/ audio to text for audio
+- location service updating every 30 min and then shuts off
+- date and hour of pictures
+- chapters per day in the beggining
+- summary per day
 
 
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
