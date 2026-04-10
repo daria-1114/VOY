@@ -48,13 +48,14 @@ TO-DO:
 - db for more than one device
 
 - button for deleting items instead of just clicking on them
+- ~~remove clusters~~
 - pdf documents 
 - api narrative generation for pictures & video/ audio to text for audio
 - location service updating every 30 min and then shuts off
 - date and hour of pictures
-- chapters per day in the beggining
+- chapters per day in the beginning
 - summary per day
-
+- days being independent from steps
 
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
