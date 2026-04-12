@@ -10,6 +10,8 @@ import com.example.voy.data.db.AppDatabase;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.entities.TripItemEntity;
 
+import org.json.JSONObject;
+
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -83,7 +85,9 @@ public class TripRepository {
     public void updateTripNotes(String userId, String tripId, String notes) {
         dbExecutor.execute(() -> tripDao.updateNotes(userId, tripId, notes));
     }
-
+    public void updateItemNotes(String itemId, String notes) {
+        dbExecutor.execute(() -> tripItemDao.updateNotes(itemId, notes));
+    }
     public void addAttachment(String userId, String tripId, String uri) {
         dbExecutor.execute(() -> {
             TripEntity trip = tripDao.getTripSync(userId, tripId);

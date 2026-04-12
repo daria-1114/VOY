@@ -15,11 +15,15 @@ public class AudioViewHolder extends RecyclerView.ViewHolder {
     public ImageView mapPreview;
     public MaterialCardView mapCard;
     public TextView placeChip;
+    public View cardNotes;
+    public TextView txtNotesPreview;
     public AudioViewHolder(View itemView) {
         super(itemView);
         playButton = itemView.findViewById(R.id.btnPlayAudio);
         mapPreview = itemView.findViewById(R.id.imgMapPreview);
         mapCard = itemView.findViewById(R.id.cardMap);
         placeChip = itemView.findViewById(R.id.txtPlaceChip);
+        cardNotes = itemView.findViewById(R.id.cardNotes);
+        txtNotesPreview = itemView.findViewById(R.id.txtNotesPreview);
     }
 }

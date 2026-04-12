@@ -33,4 +33,6 @@ public interface TripItemDao {
     @Query("DELETE FROM trip_items WHERE userId=:userId AND tripId=:tripId AND localUri=:localUri")
     void deleteByTripAndLocalUri(String userId, String tripId, String localUri); // deletes by uri in case the item is deleted from the device
 
+    @Query("UPDATE trip_items SET notes = :notes WHERE id = :itemId")
+    void updateNotes(String itemId, String notes);
 }
