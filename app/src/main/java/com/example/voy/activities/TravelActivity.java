@@ -143,7 +143,8 @@ public class TravelActivity extends AppCompatActivity {
                 recyclerView.setLayoutManager(llm);
                 recyclerView.setHasFixedSize(false);
                 recyclerView.setItemViewCacheSize(0);
-                adapter = new TripItemAdapter(item -> showDeleteDialog(item));
+                adapter = new TripItemAdapter(item -> showDeleteDialog(item),
+                        (item, notes) -> tripRepository.updateItemNotes(item.id, notes));
                 recyclerView.setAdapter(adapter);
 
                 tripRepository.observeAllItemsForTrip(userId, tripId)

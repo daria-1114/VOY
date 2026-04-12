@@ -50,6 +50,7 @@ TO-DO:
 - button for deleting items instead of just clicking on them
 - ~~remove clusters~~
 - pdf documents 
+- ~~text card for each item~~
 - api narrative generation for pictures & video/ audio to text for audio
 - location service updating every 30 min and then shuts off
 - date and hour of pictures

@@ -18,10 +18,12 @@ import com.bumptech.glide.Glide;
 import com.example.voy.BuildConfig;
 import com.example.voy.R;
 import com.example.voy.data.entities.TripItemEntity;
+import com.example.voy.data.repository.TripRepository;
 import com.example.voy.viewHolders.AudioViewHolder;
 import com.example.voy.viewHolders.PhotoViewHolder;
 import com.example.voy.viewHolders.StepsViewHolder;
 import com.example.voy.viewHolders.VideoViewHolder;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -48,15 +50,18 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private final Map<String, String> placeCache = new HashMap<>();
     private MediaPlayer mediaPlayer;
     private AudioViewHolder currentAudioHolder;
-
+    private TripRepository repository;
     public interface OnItemClickedListener {
         void onItemClick(TripItemEntity item);
     }
-
+    public interface OnNoteSavedListener {
+        void onNoteSaved(TripItemEntity item, String newNotes);
+    }
     private final OnItemClickedListener listener;
-
-    public TripItemAdapter(OnItemClickedListener listener) {
+    private final OnNoteSavedListener savedListener;
+    public TripItemAdapter(OnItemClickedListener listener, OnNoteSavedListener savedListener) {
         this.listener = listener;
+        this.savedListener = savedListener;
     }
 
     // -------------------------------------------------------------------------
@@ -102,6 +107,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
             h.placeChip.setVisibility(View.GONE);
+            bindNotesCard(h.cardNotes, h.txtNotesPreview, item, repository);
 
         } else if (holder instanceof VideoViewHolder) {
             VideoViewHolder h = (VideoViewHolder) holder;
@@ -171,12 +177,13 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
             bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
-
+            bindNotesCard(h.cardNotes, h.txtNotesPreview, item, repository);
         } else if (holder instanceof AudioViewHolder) {
             AudioViewHolder h = (AudioViewHolder) holder;
             bindMapPreview(h.mapPreview, h.mapCard, item.lat, item.lng);
             attachOpenMapsClick(h.mapCard, item.lat, item.lng);
             bindPlaceChip(h.placeChip, item.lat, item.lng, item.title);
+            bindNotesCard(h.cardNotes, h.txtNotesPreview, item, repository);
             animateWaveform(h, false);
 
             h.playButton.setOnClickListener(v -> {
@@ -426,7 +433,31 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             }
         }).start();
     }
+    private void bindNotesCard(View cardNotes, TextView txtNotesPreview,
+                               TripItemEntity item, TripRepository repository) {
+        String existingNotes = item.notes != null ? item.notes : "";
 
+        txtNotesPreview.setText(existingNotes.isEmpty() ? null : existingNotes);
+
+        String finalExistingNotes = existingNotes;
+        cardNotes.setOnClickListener(v -> {
+            View dialogView = LayoutInflater.from(v.getContext())
+                    .inflate(R.layout.dialog_notes, null);
+            TextInputEditText etNote = dialogView.findViewById(R.id.etNoteInput);
+            etNote.setText(existingNotes);
+
+            new androidx.appcompat.app.AlertDialog.Builder(v.getContext())
+                    .setView(dialogView)
+                    .setPositiveButton("Save", (dialog, which) -> {
+                        String newNotes = etNote.getText() != null
+                                ? etNote.getText().toString().trim() : "";
+                        txtNotesPreview.setText(newNotes.isEmpty() ? null : newNotes);
+                        if (savedListener != null) savedListener.onNoteSaved(item, newNotes);
+                    })
+                    .setNegativeButton("Cancel", null)
+                    .show();
+        });
+    }
     private void attachOpenMapsClick(View mapCardView, Double lat, Double lng) {
         if (mapCardView == null) return;
         if (lat == null || lng == null) {

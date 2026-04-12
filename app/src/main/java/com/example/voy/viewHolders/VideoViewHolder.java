@@ -17,6 +17,8 @@ public class VideoViewHolder extends RecyclerView.ViewHolder {
     public ImageView mapPreview;
     public MaterialCardView mapCard;
     public TextView placeChip;
+    public View cardNotes;
+    public TextView txtNotesPreview;
     public android.media.MediaPlayer mediaPlayer;
     public VideoViewHolder(View itemView) {
         super(itemView);
@@ -25,6 +27,7 @@ public class VideoViewHolder extends RecyclerView.ViewHolder {
         mapPreview  = itemView.findViewById(R.id.imgMapPreview);
         mapCard     = itemView.findViewById(R.id.cardMap);
         placeChip   = itemView.findViewById(R.id.txtPlaceChip);
-
+        cardNotes = itemView.findViewById(R.id.cardNotes);
+        txtNotesPreview = itemView.findViewById(R.id.txtNotesPreview);
     }
 }
