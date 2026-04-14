@@ -67,6 +67,7 @@ public class TripForegroundService extends Service {
     private SensorEventListener stepListener;
     private int stepCounterBaseline = -1;
     private long lastStepDayOffset = -1;
+    private long lastDayCardOffset = -1;
     private final java.util.Set<String> writtenUris = new java.util.HashSet<>();
 
     // -------------------------------------------------------------------------
@@ -259,6 +260,26 @@ public class TripForegroundService extends Service {
         scanLoopFuture = executor.submit(() -> {
             while (running) {
                 try {
+                    long elapsedMs  = System.currentTimeMillis() - tripStartTimeMs;
+                    long dayOffset  = elapsedMs / TimeUnit.MINUTES.toMillis(2);
+
+                    if (dayOffset != lastDayCardOffset) {
+                        lastDayCardOffset = dayOffset;
+                        String dayLabel = "Day " + (dayOffset + 1);
+
+                        TripItemEntity dayEntity = new TripItemEntity(
+                                UUID.randomUUID().toString(),
+                                tripId, userId,
+                                TripItemType.DAY,
+                                System.currentTimeMillis(),
+                                null, null, null, null,
+                                dayLabel,
+                                buildDayMeta((int) dayOffset + 1, dayLabel)
+                        );
+                        tripRepository.insertTripItem(dayEntity);
+                        if (tripJsonWriter != null) tripJsonWriter.append(dayEntity);
+                        Log.d(TAG, "Inserted DAY card for " + dayLabel);
+                    }
                     if (mediaScanner.canScanAnything()) {
                         long tripStartSec = tripStartTimeMs / 1000L;
                         long sinceSec     = Math.max(
@@ -418,7 +439,20 @@ public class TripForegroundService extends Service {
                 long dayDurationMs    = TimeUnit.HOURS.toMillis(23);
                 long intervalMs       = items.length() > 1
                         ? dayDurationMs / (items.length() - 1) : 0;
+                long dayStartTimestampMs = simStartMs + dayStartOffsetMs;
 
+                TripItemEntity dayEntity = new TripItemEntity(
+                        UUID.randomUUID().toString(),
+                        simTripId,
+                        simUserId,
+                        TripItemType.DAY,
+                        dayStartTimestampMs,
+                        null, null, null, null,
+                        dayLabel,
+                        buildDayMeta(dayNumber, dayLabel)
+                );
+                tripRepository.insertTripItem(dayEntity);
+                Log.d(TAG, "Mock inserted DAY card for " + dayLabel);
                 for (int i = 0; i < items.length(); i++) {
                     JSONObject itemObj  = items.getJSONObject(i);
                     String     filename = itemObj.getString("filename");
@@ -527,7 +561,16 @@ public class TripForegroundService extends Service {
                 .setOnlyAlertOnce(true)
                 .build();
     }
-
+    private String buildDayMeta(int dayNumber, String dayLabel) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("dayNumber", dayNumber);
+            obj.put("dayLabel", dayLabel);
+            return obj.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(

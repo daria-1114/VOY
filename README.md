@@ -56,7 +56,7 @@ TO-DO:
 - date and hour of pictures
 - chapters per day in the beginning
 - summary per day
-- days being independent from steps
+- ~~days being independent from steps~~
 
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
