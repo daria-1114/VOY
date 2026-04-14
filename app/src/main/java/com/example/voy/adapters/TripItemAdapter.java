@@ -22,6 +22,8 @@ import com.example.voy.data.repository.TripRepository;
 import com.example.voy.viewHolders.AudioViewHolder;
 import com.example.voy.viewHolders.PhotoViewHolder;
 import com.example.voy.viewHolders.StepsViewHolder;
+import com.example.voy.viewHolders.DayViewHolder;
+
 import com.example.voy.viewHolders.VideoViewHolder;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -41,6 +43,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private static final int TYPE_VIDEO = 2;
     private static final int TYPE_AUDIO = 3;
     private static final int TYPE_STEPS = 4;
+    private static final int TYPE_DAY = 5;
 
     // -------------------------------------------------------------------------
     // Fields
@@ -74,6 +77,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             case VIDEO: return TYPE_VIDEO;
             case AUDIO: return TYPE_AUDIO;
             case STEPS: return TYPE_STEPS;
+            case DAY: return TYPE_DAY;
             case PHOTO: default: return TYPE_PHOTO;
         }
     }
@@ -91,9 +95,12 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         } else if (viewType == TYPE_STEPS) {
             return new StepsViewHolder(
                     inflater.inflate(R.layout.trip_item_steps, parent, false));
-        } else {
+        } else if (viewType == TYPE_AUDIO) {
             return new AudioViewHolder(
                     inflater.inflate(R.layout.trip_item_audio, parent, false));
+        } else{
+            return new DayViewHolder(
+                    inflater.inflate(R.layout.trip_item_day, parent, false));
         }
     }
 
@@ -259,6 +266,9 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
                 h.dayLabel.setText(item.title != null ? item.title : "");
                 h.stepCount.setText("");
             }
+        } else if (holder instanceof DayViewHolder) {
+        DayViewHolder h = (DayViewHolder) holder;
+        h.dayHeader.setText(item.title != null ? item.title : "");
         }
 
         holder.itemView.setOnClickListener(v -> {

@@ -6,5 +6,7 @@ public enum TripItemType {
     AUDIO,
     NOTE,
     STEPS,
-    LOCATION
+    LOCATION,
+    DAY
+
 }
