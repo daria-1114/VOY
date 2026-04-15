@@ -3,8 +3,11 @@ package com.example.voy.activities;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -29,6 +32,7 @@ import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
+import java.util.List;
 
 public class TravelActivity extends AppCompatActivity {
 
@@ -61,7 +65,7 @@ public class TravelActivity extends AppCompatActivity {
 
         private boolean isEditMode = false;
         private TripEntity currentTrip;
-
+        private LinearLayout chapterContainer;
         private static final int REQ_PICK_ATTACHMENT = 601;
 
         @Override
@@ -84,7 +88,8 @@ public class TravelActivity extends AppCompatActivity {
                 tvTripTitle    = findViewById(R.id.tvTripTitle);
                 tilTripTitle   = findViewById(R.id.tilTripTitle);
                 etTripTitle    = findViewById(R.id.etTripTitle);
-
+                //chapter card
+                chapterContainer = findViewById(R.id.chapterContainer);
                 // Notes views
                 tvNotes        = findViewById(R.id.tvNotes);
                 tilNotes       = findViewById(R.id.tilNotes);
@@ -148,7 +153,40 @@ public class TravelActivity extends AppCompatActivity {
                 recyclerView.setAdapter(adapter);
 
                 tripRepository.observeAllItemsForTrip(userId, tripId)
-                        .observe(this, items -> adapter.setItems(items));
+                        .observe(this, items -> {
+                                adapter.setItems(items);
+                                buildChapterStrips(items);
+                        });
+        }
+
+        private void buildChapterStrips(List<TripItemEntity> items) {
+                chapterContainer.removeAllViews();
+                if (items == null) {
+                        Log.d("TravelActivity", "buildChapterStrip: items is null");
+                        return;
+                }
+
+                Log.d("TravelActivity", "buildChapterStrip: total items = " + items.size());
+
+
+                for (int i = 0; i < items.size(); i++) {
+                        TripItemEntity item = items.get(i);
+                        Log.d("TravelActivity", "item " + i + " type=" + item.type + " title=" + item.title);
+                        if (item.type != com.example.voy.enums.TripItemType.DAY) continue;
+
+                        final int position = i;
+                        View chip = LayoutInflater.from(this)
+                                .inflate(R.layout.item_chapter_card, chapterContainer, false);
+                        TextView label = chip.findViewById(R.id.txtChapterLabel);
+                        label.setText(item.title != null ? item.title : "");
+
+                        chip.setOnClickListener(v -> {
+                                recyclerView.post(() -> {
+                                        recyclerView.smoothScrollToPosition(position);
+                                });
+                        });
+                        chapterContainer.addView(chip);
+                }
         }
 
         private void enterEditMode() {

@@ -286,7 +286,9 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public int getItemCount() {
         return displayItems.size();
     }
-
+    public List<TripItemEntity> getItems() {
+        return displayItems;
+    }
     // -------------------------------------------------------------------------
     // Data
     // -------------------------------------------------------------------------

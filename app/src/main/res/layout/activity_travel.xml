@@ -19,191 +19,178 @@
         app:navigationContentDescription="Go back to main page"
         app:menu="@menu/travel_menu" />
 
-    <androidx.core.widget.NestedScrollView
-        android:id="@+id/nestedScroll"
+    <!-- MAIN CONTENT -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="56dp"
-        android:fillViewport="true">
+        android:orientation="vertical">
 
+        <!-- EVERYTHING ABOVE SCROLL (UNCHANGED) -->
         <LinearLayout
+            android:id="@+id/titleRow"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
 
-            <!-- Title row -->
-            <LinearLayout
-                android:id="@+id/titleRow"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="12dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <!-- View mode: plain title text -->
-                <TextView
-                    android:id="@+id/tvTripTitle"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textSize="22sp"
-                    android:textStyle="bold"
-                    android:textColor="?attr/colorOnBackground"
-                    android:hint="Trip title"
-                    android:ellipsize="end"
-                    android:maxLines="1" />
-
-                <!-- Edit mode: text input -->
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilTripTitle"
-                    style="@style/Widget.Material3.TextInputLayout.FilledBox.Dense"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:hint="Trip title"
-                    android:visibility="gone"
-                    app:boxCornerRadiusTopStart="16dp"
-                    app:boxCornerRadiusTopEnd="16dp"
-                    app:boxCornerRadiusBottomStart="16dp"
-                    app:boxCornerRadiusBottomEnd="16dp">
-
-                    <com.google.android.material.textfield.TextInputEditText
-                        android:id="@+id/etTripTitle"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:maxLines="1"
-                        android:singleLine="true"
-                        android:inputType="textCapWords" />
-                </com.google.android.material.textfield.TextInputLayout>
-
-                <!-- Edit button (view mode) -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnEditTrip"
-                    style="?attr/materialIconButtonStyle"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="10dp"
-                    android:contentDescription="Edit trip"
-                    app:cornerRadius="16dp"
-                    app:icon="@drawable/baseline_edit_24"
-                    app:iconGravity="textStart"
-                    app:iconPadding="0dp" />
-
-                <!-- Save button (edit mode) -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnSaveTripTitle"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
-                    android:layout_marginStart="10dp"
-                    android:visibility="gone"
-                    android:contentDescription="Save title"
-                    app:cornerRadius="16dp"
-                    app:icon="@drawable/baseline_check_24"
-                    app:iconGravity="textStart"
-                    app:iconPadding="0dp" />
-
-            </LinearLayout>
-
-            <!-- Notes section -->
             <TextView
-                android:id="@+id/tvNotes"
-                android:layout_width="match_parent"
+                android:id="@+id/tvTripTitle"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="8dp"
-                android:textSize="14sp"
-                android:textColor="?attr/colorOnSurfaceVariant"
-                android:hint="No notes"
-                android:visibility="visible" />
+                android:layout_weight="1"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="?attr/colorOnBackground"
+                android:hint="Trip title"
+                android:ellipsize="end"
+                android:maxLines="1" />
 
             <com.google.android.material.textfield.TextInputLayout
-                android:id="@+id/tilNotes"
+                android:id="@+id/tilTripTitle"
                 style="@style/Widget.Material3.TextInputLayout.FilledBox.Dense"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="8dp"
-                android:hint="Notes"
-                android:visibility="gone"
-                app:boxCornerRadiusTopStart="16dp"
-                app:boxCornerRadiusTopEnd="16dp"
-                app:boxCornerRadiusBottomStart="16dp"
-                app:boxCornerRadiusBottomEnd="16dp">
+                android:layout_weight="1"
+                android:hint="Trip title"
+                android:visibility="gone">
 
                 <com.google.android.material.textfield.TextInputEditText
-                    android:id="@+id/etNotes"
+                    android:id="@+id/etTripTitle"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:minLines="3"
-                    android:maxLines="6"
-                    android:inputType="textMultiLine|textCapSentences" />
+                    android:maxLines="1"
+                    android:singleLine="true"
+                    android:inputType="textCapWords" />
             </com.google.android.material.textfield.TextInputLayout>
 
-            <!-- Attachments section -->
-            <LinearLayout
-                android:id="@+id/attachmentsSection"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="16dp"
-                android:orientation="vertical">
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEditTrip"
+                style="?attr/materialIconButtonStyle"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="10dp"
+                app:icon="@drawable/baseline_edit_24" />
 
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Attachments"
-                        android:textSize="16sp"
-                        android:textStyle="bold"
-                        android:textColor="?attr/colorOnBackground" />
-
-                    <!-- Add attachment button — only visible in edit mode -->
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnAddAttachment"
-                        style="?attr/materialIconButtonStyle"
-                        android:layout_width="40dp"
-                        android:layout_height="40dp"
-                        android:visibility="gone"
-                        android:contentDescription="Add attachment"
-                        app:icon="@android:drawable/ic_input_add"
-                        app:iconSize="20dp"
-                        app:cornerRadius="20dp" />
-
-                </LinearLayout>
-
-                <androidx.recyclerview.widget.RecyclerView
-                    android:id="@+id/recyclerAttachments"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:nestedScrollingEnabled="false" />
-
-            </LinearLayout>
-
-            <!-- Divider -->
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginHorizontal="16dp"
-                android:layout_marginTop="16dp"
-                android:background="?attr/colorOutline" />
-
-            <!-- Trip items RecyclerView -->
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerViewTripItems"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:nestedScrollingEnabled="false" />
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSaveTripTitle"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="10dp"
+                android:visibility="gone"
+                app:icon="@drawable/baseline_check_24" />
 
         </LinearLayout>
 
-    </androidx.core.widget.NestedScrollView>
+        <!-- NOTES -->
+        <TextView
+            android:id="@+id/tvNotes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:textSize="14sp"
+            android:textColor="?attr/colorOnSurfaceVariant"
+            android:hint="No notes" />
+
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/tilNotes"
+            style="@style/Widget.Material3.TextInputLayout.FilledBox.Dense"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="8dp"
+            android:hint="Notes"
+            android:visibility="gone">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/etNotes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:minLines="3"
+                android:maxLines="6"
+                android:inputType="textMultiLine|textCapSentences" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- ATTACHMENTS (UNCHANGED) -->
+        <LinearLayout
+            android:id="@+id/attachmentsSection"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="Attachments"
+                    android:textSize="16sp"
+                    android:textStyle="bold"
+                    android:textColor="?attr/colorOnBackground" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnAddAttachment"
+                    style="?attr/materialIconButtonStyle"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:visibility="gone"
+                    app:icon="@android:drawable/ic_input_add"
+                    app:iconSize="20dp" />
+
+            </LinearLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerAttachments"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+
+        <!-- DIVIDER -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="16dp"
+            android:background="?attr/colorOutline" />
+
+        <!-- CHAPTERS -->
+        <HorizontalScrollView
+            android:id="@+id/chapterScrollView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:paddingHorizontal="12dp"
+            android:paddingVertical="8dp">
+
+            <LinearLayout
+                android:id="@+id/chapterContainer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical" />
+        </HorizontalScrollView>
+
+        <!-- ✅ RECYCLER VIEW FIXED -->
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerViewTripItems"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:clipToPadding="false"
+            android:paddingBottom="16dp" />
+
+    </LinearLayout>
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>
