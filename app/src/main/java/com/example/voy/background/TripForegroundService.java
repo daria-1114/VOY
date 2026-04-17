@@ -69,6 +69,8 @@ public class TripForegroundService extends Service {
     private long lastStepDayOffset = -1;
     private long lastDayCardOffset = -1;
     private final java.util.Set<String> writtenUris = new java.util.HashSet<>();
+    private long lastGpsRequestTime = 0;
+    private static final long GPS_INTERVAL_MS = TimeUnit.MINUTES.toMillis(90);
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -109,7 +111,6 @@ public class TripForegroundService extends Service {
 
             Log.d(TAG, "Resuming trip, tripId=" + tripId);
             startForeground(NOTIF_ID, buildNotification("Resuming trip capture…"));
-            startLocationManager();
             startMediaScanLoop();
             startStepCounting();
             return START_STICKY;
@@ -143,7 +144,6 @@ public class TripForegroundService extends Service {
                     getApplicationContext(), tripId, tripStartTimeMs);
 
             startForeground(NOTIF_ID, buildNotification("Capturing trip items…"));
-            startLocationManager();
             startMediaScanLoop();
             startStepCounting();
             return START_STICKY;
@@ -220,9 +220,7 @@ public class TripForegroundService extends Service {
         return null;
     }
     // Real trip
-    private void startLocationManager() {
-        locationManager.start(getMainLooper());
-    }
+
     private void startMediaScanLoop() {
         if (running) return;
         running = true;
@@ -260,11 +258,14 @@ public class TripForegroundService extends Service {
         scanLoopFuture = executor.submit(() -> {
             while (running) {
                 try {
-                    long elapsedMs  = System.currentTimeMillis() - tripStartTimeMs;
+                    long currentTime = System.currentTimeMillis();
+                    long elapsedMs  = currentTime - tripStartTimeMs;
                     long dayOffset  = elapsedMs / TimeUnit.MINUTES.toMillis(2);
 
                     if (dayOffset != lastDayCardOffset) {
                         lastDayCardOffset = dayOffset;
+                        locationManager.resetDailyDistance();
+
                         String dayLabel = "Day " + (dayOffset + 1);
 
                         TripItemEntity dayEntity = new TripItemEntity(
@@ -279,6 +280,11 @@ public class TripForegroundService extends Service {
                         tripRepository.insertTripItem(dayEntity);
                         if (tripJsonWriter != null) tripJsonWriter.append(dayEntity);
                         Log.d(TAG, "Inserted DAY card for " + dayLabel);
+                    }
+                    if(currentTime - lastGpsRequestTime >= GPS_INTERVAL_MS){
+                        Log.i(TAG, "GPS interval finished. requesting single update");
+                        locationManager.requestSingleUpdate();
+                        lastGpsRequestTime = currentTime;
                     }
                     if (mediaScanner.canScanAnything()) {
                         long tripStartSec = tripStartTimeMs / 1000L;
