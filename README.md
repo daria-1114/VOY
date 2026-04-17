@@ -52,7 +52,7 @@ TO-DO:
 - pdf documents 
 - ~~text card for each item~~
 - api narrative generation for pictures & video/ audio to text for audio
-- location service updating every 30 min and then shuts off
+- ~~location service updating every 30 min and then shuts off~~
 - date and hour of pictures
 - ~~chapters per day in the beginning~~
 - summary per day
