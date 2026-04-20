@@ -1,10 +1,17 @@
 package com.example.voy.adapters;
 
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.ImageDecoder;
 import android.location.Address;
 import android.location.Geocoder;
+import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
+import android.os.Build;
+import android.provider.MediaStore;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -12,6 +19,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
+import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
@@ -19,14 +27,21 @@ import com.example.voy.BuildConfig;
 import com.example.voy.R;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
+import com.example.voy.enums.TripItemType;
 import com.example.voy.viewHolders.AudioViewHolder;
 import com.example.voy.viewHolders.PhotoViewHolder;
 import com.example.voy.viewHolders.StepsViewHolder;
 import com.example.voy.viewHolders.DayViewHolder;
-
 import com.example.voy.viewHolders.VideoViewHolder;
+import com.google.ai.client.generativeai.GenerativeModel;
+import com.google.ai.client.generativeai.java.GenerativeModelFutures;
+import com.google.ai.client.generativeai.type.Content;
+import com.google.ai.client.generativeai.type.GenerateContentResponse;
+import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
+import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -54,6 +69,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private MediaPlayer mediaPlayer;
     private AudioViewHolder currentAudioHolder;
     private TripRepository repository;
+    private GenerativeModelFutures model;
     public interface OnItemClickedListener {
         void onItemClick(TripItemEntity item);
     }
@@ -65,8 +81,13 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public TripItemAdapter(OnItemClickedListener listener, OnNoteSavedListener savedListener) {
         this.listener = listener;
         this.savedListener = savedListener;
-    }
 
+        GenerativeModel generativeModel = new GenerativeModel(
+                "gemini-flash-latest",
+                BuildConfig.GEMINI_API_KEY
+        );
+        this.model = GenerativeModelFutures.from(generativeModel);
+    }
     // -------------------------------------------------------------------------
     // RecyclerView overrides
     // -------------------------------------------------------------------------
@@ -455,10 +476,114 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         cardNotes.setOnClickListener(v -> {
             View dialogView = LayoutInflater.from(v.getContext())
                     .inflate(R.layout.dialog_notes, null);
+
             TextInputEditText etNote = dialogView.findViewById(R.id.etNoteInput);
+            MaterialButton btnAi = dialogView.findViewById(R.id.btnAiGenerate);
+            MaterialButton btnMic = dialogView.findViewById(R.id.btnSpeechToText);
+            btnAi.setVisibility(item.type == TripItemType.AUDIO ?
+                    View.GONE : View.VISIBLE);
+            btnMic.setVisibility(item.type == com.example.voy.enums.TripItemType.AUDIO
+                    ? View.VISIBLE : View.GONE);
             etNote.setText(existingNotes);
 
-            new androidx.appcompat.app.AlertDialog.Builder(v.getContext())
+            btnAi.setOnClickListener(v1 -> {
+                Log.d("VOYai", "ai button clicked");
+                btnAi.setEnabled(false);
+                etNote.setHint("Thinking...");
+
+                try{
+                    Bitmap bitmap;
+                    Uri uri = Uri.parse(item.localUri);
+                    try (InputStream inputStream = v1.getContext().getContentResolver().openInputStream(uri)) {
+                        bitmap = BitmapFactory.decodeStream(inputStream);
+                    }
+                    if (bitmap == null) {
+                        Log.e("VOYai", "Bitmap is NULL after loading!");
+                        etNote.setHint("Error: Could not read image file.");
+                        btnAi.setEnabled(true);
+                        return;
+                    }
+                    Log.d("VOYai", "Sending request to Gemini...");
+                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, 1024, 1024, true);
+                    Content content = new Content.Builder()
+                            .addImage(bitmap)
+                            .addText("You are a poetic travel assistant. Write a short, nostalgic " +
+                                    "one-sentence diary entry in first person based on what you see in this " + item.type + ".")
+                            .build();
+                    ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
+
+                    response.addListener(() ->{
+                        try{
+                            GenerateContentResponse result = response.get();
+                            String aiText = result.getText();
+                            Log.d("VOYai", "SUCCESS! Text: " + aiText);
+                            etNote.post(() -> etNote.setText(aiText));
+                        }catch (java.util.concurrent.ExecutionException e) {
+                            // THIS is where the 404 or 403 error is actually hiding!
+                            Throwable cause = e.getCause();
+                            String errorMsg = (cause != null) ? cause.getMessage() : e.getMessage();
+                            Log.e("VOYai", "SERVER ERROR: " + errorMsg);
+                            etNote.post(() -> etNote.setHint("Server Error: " + errorMsg));
+                        } catch (Exception e) {
+                            Log.e("VOYai", "General Error: " + e.getMessage());
+                        }
+                        btnAi.post(() -> btnAi.setEnabled(true));
+                        etNote.setHint("Write a note..");
+                    },ContextCompat.getMainExecutor(v1.getContext()));
+                } catch (SecurityException e) {
+                    Log.e("VOYai", "Bitmap load failed: ", e);
+                    etNote.setHint("Error loading image");
+                    btnAi.setEnabled(true);
+                }catch(Exception e){
+                    Log.e("VoYai","General load error", e);
+                    btnAi.setEnabled(true);
+                }
+            });
+            btnMic.setOnClickListener(v1 -> {
+                btnMic.setEnabled(false);
+                etNote.setHint("Listening to the recording...");
+
+                try {
+                    Uri audioUri = Uri.parse(item.localUri);
+                    InputStream inputStream = v1.getContext().getContentResolver().openInputStream(audioUri);
+
+                    java.io.ByteArrayOutputStream byteBuffer = new java.io.ByteArrayOutputStream();
+                    int bufferSize = 1024;
+                    byte[] buffer = new byte[bufferSize];
+
+                    int len;
+                    while ((len = inputStream.read(buffer)) != -1) {
+                        byteBuffer.write(buffer, 0, len);
+                    }
+                    byte[] audioBytes = byteBuffer.toByteArray();
+                    inputStream.close();
+
+                    Content content = new Content.Builder()
+                            .addBlob("audio/mp3", audioBytes)
+                            .addText("Listen to this recording. " +
+                                    "If you hear speech, include the essence of the conversation in the entry. " +
+                                    "Otherwise, describe the ambient atmosphere of this crowded place. Write only one nostalgic, first-person diary sentence.")
+                            .build();
+
+
+                    ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
+
+                    response.addListener(() -> {
+                        try {
+                            String aiText = response.get().getText();
+                            etNote.setText(aiText);
+                        } catch (Exception e) {
+                            etNote.setHint("AI couldn't process this audio file.");
+                        }
+                        btnMic.setEnabled(true);
+                        etNote.setHint("Write a note...");
+                    }, ContextCompat.getMainExecutor(v1.getContext()));
+
+                } catch (Exception e) {
+                    etNote.setHint("Error reading audio file.");
+                    btnMic.setEnabled(true);
+                }
+            });            new androidx.appcompat.app.AlertDialog.Builder(v.getContext())
                     .setView(dialogView)
                     .setPositiveButton("Save", (dialog, which) -> {
                         String newNotes = etNote.getText() != null
