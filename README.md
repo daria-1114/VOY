@@ -58,7 +58,9 @@ TO-DO:
 - summary per day
 - ~~days being independent from steps~~
 - clean up the app
-- save items to app's internal storage so that the AI will always be able to reach them and not be based on android:requestLegacyExternalStorage="true", which is deprecated.
+- ~~save items to app's internal storage so that the AI will always be able to reach them and not be based on android:requestLegacyExternalStorage="true", which is deprecated.~~
+- high demand error for gemini fix for audio 
+
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
 

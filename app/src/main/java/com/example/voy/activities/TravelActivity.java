@@ -22,6 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.voy.R;
 import com.example.voy.adapters.AttachmentAdapter;
 import com.example.voy.adapters.TripItemAdapter;
+import com.example.voy.background.MediaCloner;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
@@ -255,10 +256,9 @@ public class TravelActivity extends AppCompatActivity {
 
                         Uri uri = data.getData();
                         // Persist permission so we can read it later
-                        getContentResolver().takePersistableUriPermission(
-                                uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                        String internalUri = MediaCloner.cloneToInternal(this, uri, ".pdf");
 
-                        tripRepository.addAttachment(userId, tripId, uri.toString());
+                        tripRepository.addAttachment(userId, tripId,internalUri);
                 }
         }
 

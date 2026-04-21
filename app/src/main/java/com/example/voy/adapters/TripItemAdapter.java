@@ -10,6 +10,7 @@ import android.media.MediaMetadataRetriever;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.Build;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -41,6 +42,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.common.util.concurrent.ListenableFuture;
 
+import java.io.File;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -364,14 +366,19 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     private Uri resolveUri(View v, String localUri) {
         if (localUri == null) return null;
         Uri parsed = Uri.parse(localUri);
+
         if ("content".equals(parsed.getScheme())) return parsed;
-        if ("file".equals(parsed.getScheme())) {
+
+        if ("file".equals(parsed.getScheme()) || localUri.startsWith("/")) {
             try {
+                String path = parsed.getPath();
+                File file = new File(path);
                 return androidx.core.content.FileProvider.getUriForFile(
                         v.getContext(),
                         "com.example.voy.fileprovider",
-                        new java.io.File(parsed.getPath()));
+                        file);
             } catch (Exception e) {
+                Log.e("TripItemAdapter", "FileProvider error for: " + localUri, e);
                 return null;
             }
         }
@@ -487,58 +494,52 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             etNote.setText(existingNotes);
 
             btnAi.setOnClickListener(v1 -> {
-                Log.d("VOYai", "ai button clicked");
-                btnAi.setEnabled(false);
-                etNote.setHint("Thinking...");
+                        Log.d("VOYai", "ai button clicked");
+                        btnAi.setEnabled(false);
+                        etNote.setHint("");
+                        etNote.setHint("Thinking...");
 
-                try{
-                    Bitmap bitmap;
-                    Uri uri = Uri.parse(item.localUri);
-                    try (InputStream inputStream = v1.getContext().getContentResolver().openInputStream(uri)) {
-                        bitmap = BitmapFactory.decodeStream(inputStream);
-                    }
-                    if (bitmap == null) {
-                        Log.e("VOYai", "Bitmap is NULL after loading!");
-                        etNote.setHint("Error: Could not read image file.");
-                        btnAi.setEnabled(true);
-                        return;
-                    }
-                    Log.d("VOYai", "Sending request to Gemini...");
-                    Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, 1024, 1024, true);
-                    Content content = new Content.Builder()
-                            .addImage(bitmap)
-                            .addText("You are a poetic travel assistant. Write a short, nostalgic " +
-                                    "one-sentence diary entry in first person based on what you see in this " + item.type + ".")
-                            .build();
-                    ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
+                        try {
+                            Bitmap bitmap = null;
+                            Uri uri = Uri.parse(item.localUri);
+                            if(item.type == TripItemType.VIDEO){
+                                MediaMetadataRetriever retriever = new MediaMetadataRetriever();
+                                try {
+                                    retriever.setDataSource(v1.getContext(), uri);
+                                    bitmap = retriever.getFrameAtTime(100000, MediaMetadataRetriever.OPTION_CLOSEST_SYNC);
+                                }catch (Exception e){
+                                    Log.e("VOYai", "Video frame extraction failed", e);
+                                }finally{
+                                    retriever.release();
+                                }
+                            }else{
+                            try (InputStream inputStream = v1.getContext().getContentResolver().openInputStream(uri)) {
+                                bitmap = BitmapFactory.decodeStream(inputStream);
+                            }
+                            }
 
-                    response.addListener(() ->{
-                        try{
-                            GenerateContentResponse result = response.get();
-                            String aiText = result.getText();
-                            Log.d("VOYai", "SUCCESS! Text: " + aiText);
-                            etNote.post(() -> etNote.setText(aiText));
-                        }catch (java.util.concurrent.ExecutionException e) {
-                            // THIS is where the 404 or 403 error is actually hiding!
-                            Throwable cause = e.getCause();
-                            String errorMsg = (cause != null) ? cause.getMessage() : e.getMessage();
-                            Log.e("VOYai", "SERVER ERROR: " + errorMsg);
-                            etNote.post(() -> etNote.setHint("Server Error: " + errorMsg));
+                            if (bitmap == null) {
+                                Log.e("VOYai", "Bitmap is NULL after loading!");
+                                etNote.setHint("Error: Could not read image file.");
+                                btnAi.setEnabled(true);
+                                return;
+                            }
+                            Log.d("VOYai", "Sending request to Gemini...");
+                            Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, 1024, 1024, true);
+                            Content content = new Content.Builder()
+                                    .addImage(scaledBitmap)
+                                    .addText("You are a poetic travel assistant. Write a short, nostalgic " +
+                                            "one-sentence diary entry in first person based on what you see in this " + item.type + ".")
+                                    .build();
+                            Log.d("VOYai", "Starting AI call with retry logic...");
+                            retryAi(content, etNote, btnAi, 0);
+
                         } catch (Exception e) {
                             Log.e("VOYai", "General Error: " + e.getMessage());
+                            etNote.setHint("Write a note...");
+                            btnAi.setEnabled(true);
                         }
-                        btnAi.post(() -> btnAi.setEnabled(true));
-                        etNote.setHint("Write a note..");
-                    },ContextCompat.getMainExecutor(v1.getContext()));
-                } catch (SecurityException e) {
-                    Log.e("VOYai", "Bitmap load failed: ", e);
-                    etNote.setHint("Error loading image");
-                    btnAi.setEnabled(true);
-                }catch(Exception e){
-                    Log.e("VoYai","General load error", e);
-                    btnAi.setEnabled(true);
-                }
-            });
+                    });
             btnMic.setOnClickListener(v1 -> {
                 btnMic.setEnabled(false);
                 etNote.setHint("Listening to the recording...");
@@ -608,5 +609,28 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
             v.getContext().startActivity(intent);
         });
+    }
+    private void retryAi(Content content, TextInputEditText etNote, MaterialButton btnAi, int attempt){
+        int MAX_RETRIES = 3;
+        ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
+
+        response.addListener(() ->{
+            try {
+                String aiText = response.get().getText();
+                etNote.setText(aiText);
+                btnAi.setEnabled(true);
+                etNote.setHint("Write a note...");
+            }catch (Exception e){
+                if(e.getMessage().contains("503") && attempt <MAX_RETRIES){
+                    int delay = (int) Math.pow(2, attempt) * 1500;
+                    etNote.setHint("Server busy, retrying..");
+                    new Handler().postDelayed(() ->
+                            retryAi(content,etNote,btnAi,attempt +1), delay);
+                }else{
+                    etNote.setHint("Server too busy. Try again later.");
+                    btnAi.setEnabled(true);
+                }
+            }
+        }, ContextCompat.getMainExecutor(etNote.getContext()));
     }
 }
