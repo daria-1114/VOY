@@ -232,6 +232,11 @@ public class TripForegroundService extends Service {
                 lat = loc.getLatitude();
                 lng = loc.getLongitude();
             }
+            String ext = scannedItem.type == TripItemType.VIDEO ? ".mp4" :
+                    scannedItem.type == TripItemType.AUDIO ? ".mp3" : ".jpg";
+
+            String internalUri = MediaCloner.cloneToInternal(
+                    getApplicationContext(), scannedItem.uri, ext);
 
             TripItemEntity item = new TripItemEntity(
                     UUID.randomUUID().toString(),
@@ -239,7 +244,7 @@ public class TripForegroundService extends Service {
                     userId,
                     scannedItem.type,
                     scannedItem.timestampMs,
-                    scannedItem.uri.toString(),
+                    internalUri,
                     null,
                     lat,
                     lng,
@@ -472,7 +477,13 @@ public class TripForegroundService extends Service {
                             + (intervalMs * i);
 
                     String filePath = MOCK_FOLDER + filename;
-                    String localUri = Uri.fromFile(new File(filePath)).toString();
+                    File mockFile = new File(filePath);
+                    Uri mockUri = Uri.fromFile(mockFile);
+                    String extension = filename.contains(".") ? filename.substring(filename.lastIndexOf(".")) : ".jpg";
+                    String internalUriStirng  = MediaCloner.cloneToInternal(
+                            getApplicationContext(),
+                            mockUri,
+                            extension);
 
                     String metadataJson = buildMockMetadata(
                             type, filename, landmark);
@@ -483,7 +494,7 @@ public class TripForegroundService extends Service {
                             simUserId,
                             type,
                             timestampMs,
-                            localUri,
+                            internalUriStirng,
                             null,
                             lat,
                             lng,
