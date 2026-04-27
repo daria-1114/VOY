@@ -21,13 +21,8 @@
         app:title="VOY"
         app:titleCentered="true"
         app:titleTextAppearance="@style/HeaderTitleStyle"
-
-        app:navigationIcon="@drawable/baseline_location_on_24"
-        app:navigationContentDescription="Open map"
-
         app:menu="@menu/main_menu"
         />
-
 
     <View
         android:layout_width="match_parent"
