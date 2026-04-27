@@ -30,13 +30,12 @@ TO-DO:
 
 
 
-- filter by video, audio, image
+
 - ~~ability to add notes on a trip in the beginning~~ 
 - ~~add steps(per day)~~
 
 - ~~make a finished entry look more appealing with space for notes and clustered images if they are close to each other(time) and show location for clusters!!!~~
 - ~~user can add tickets manually as pdfs and other media files~~
-- media captured (number) appears in the trip in main
 
 
 - ~~create mock trip~~
@@ -67,6 +66,7 @@ the service is only location because dataSync kills the service after 6 hours
 !! change export schema for the db to true 
 
 
+###EXTRA INFO
 
 export trip to json:
 adb pull /sdcard/Android/data/com.example.voy/files/Voy/ D:\Desktop\Voy
@@ -74,3 +74,9 @@ adb pull /sdcard/Android/data/com.example.voy/files/Voy/ D:\Desktop\Voy
 sdcard → Android → data → com.example.voy → files → Voy
 
 adb pull /sdcard/Android/data/com.example.voy/files/Voy/trip_<tripId>.json C:\Users\YourUsername\Desktop\ -- only for a specific one
+
+THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
+the service is only location because dataSync kills the service after 6 hours
+the day lasts only two minutes. change in tripForegroundService.
+
+!! change export schema for the db to true 

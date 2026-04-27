@@ -4,20 +4,17 @@ import static android.view.View.GONE;
 import static android.view.View.VISIBLE;
 
 import android.Manifest;
-import android.app.Application;
-import android.app.Service;
 import android.content.Intent;
-import android.content.pm.ServiceInfo;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 
+import android.view.Gravity;
 import android.view.MenuItem;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
-import android.widget.Toolbar;
 
 import androidx.activity.result.ActivityResultLauncher;
 import android.content.pm.PackageManager;
@@ -37,8 +34,6 @@ import com.example.voy.data.repository.TripRepository;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
-
-import androidx.lifecycle.Observer;
 
 import java.util.UUID;
 
@@ -130,10 +125,10 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(tripAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-        toolbar.setNavigationOnClickListener(v->{
-            Intent intent = new Intent(this, MapsActivity.class);
-            startActivity(intent);
-        });
+//        toolbar.setNavigationOnClickListener(v->{
+//            Intent intent = new Intent(this, MapsActivity.class);
+//            startActivity(intent);
+//        });
 
         toolbar.setOnMenuItemClickListener(item ->{
             if(item.getItemId() == R.id.actionAccount){
@@ -271,6 +266,7 @@ public class MainActivity extends AppCompatActivity {
     }
     private void showPopupMenu(MaterialToolbar toolbar) {
         PopupMenu popupMenu = new PopupMenu(this, toolbar);
+        popupMenu.setGravity(Gravity.END);
         popupMenu.getMenuInflater().inflate(R.menu.popup_menu, popupMenu.getMenu());
         popupMenu.setOnMenuItemClickListener(item -> {
             if(item.getItemId() == R.id.LogOut_btn){
@@ -342,7 +338,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         return super.onOptionsItemSelected(item);
-
     }
 
 }

@@ -43,8 +43,8 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.VOY"
-        android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true">
+        android:usesCleartextTraffic="false"
+        >
         <service
             android:name=".background.TripForegroundService"
             android:exported="false"
@@ -85,10 +85,7 @@
             android:name="com.google.android.geo.API_KEY"
             android:value="${MAPS_API_KEY}" />
 
-        <activity
-            android:name=".activities.MapsActivity"
-            android:exported="false"
-            android:label="@string/title_activity_maps" />
+
         <activity
             android:name=".activities.MainActivity"
             android:exported="true"/>
@@ -105,7 +102,9 @@
             android:name=".activities.TravelActivity"
             android:exported="false"
             android:parentActivityName=".activities.MainActivity" />
-
+        <activity android:name=".activities.InfoActivity"
+            android:exported="false"
+            android:parentActivityName=".activities.MainActivity"/>
     </application>
 
 </manifest>
