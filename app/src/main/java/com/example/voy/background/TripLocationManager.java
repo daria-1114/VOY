@@ -54,7 +54,7 @@ public class TripLocationManager {
                         Log.w(TAG, "Location came back null");
                     }
                 })
-                .addOnFailureListener(e -> Log.e(TAG, "failed to get single update",e));
+                .addOnFailureListener(e -> Log.e(TAG, "failed to get update",e));
     }
 
     private void updateDistanceMeters(Location loc) {

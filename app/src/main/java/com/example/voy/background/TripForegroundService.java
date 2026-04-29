@@ -90,7 +90,6 @@ public class TripForegroundService extends Service {
         Log.d(TAG, "onStartCommand action="
                 + (intent == null ? "null" : intent.getAction()));
 
-        // FOR RESTART, FROM STATE STORE
         if (intent == null || intent.getAction() == null) {
             TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
 
@@ -98,7 +97,6 @@ public class TripForegroundService extends Service {
                 stopSelf();
                 return START_NOT_STICKY;
             }
-
             userId          = state.userId;
             tripId          = state.tripId;
             tripStartTimeMs = state.startTimeMs;
@@ -118,7 +116,6 @@ public class TripForegroundService extends Service {
 
         String action = intent.getAction();
 
-        // NORMAL START
         if (ACTION_START.equals(action)) {
             String incomingUserId = intent.getStringExtra(EXTRA_USER_ID);
             String incomingTripId = intent.getStringExtra(EXTRA_TRIP_ID);
@@ -136,8 +133,8 @@ public class TripForegroundService extends Service {
             TripCaptureStateStore.saveActive(this, userId, tripId, tripStartTimeMs);
 
             long startSec = tripStartTimeMs / 1000L;
-            TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
-            lastScanDateAddedSec = state.lastScanDateAddedSec > 0
+            TripCaptureStateStore.State state = TripCaptureStateStore.load(this); // checking to see if there was already a media scan for this trip
+            lastScanDateAddedSec = state.lastScanDateAddedSec > 0 //the time(sec) of the last scanned item
                     ? state.lastScanDateAddedSec : startSec;
 
             tripJsonWriter = new TripJsonWriter(
@@ -149,13 +146,11 @@ public class TripForegroundService extends Service {
             return START_STICKY;
         }
 
-        // ── ACTION_STOP ───────────────────────────────────────────────────
         if (ACTION_STOP.equals(action)) {
             stopRealTrip();
             return START_NOT_STICKY;
         }
 
-        // ── ACTION_START_MOCK ─────────────────────────────────────────────
         if (ACTION_START_MOCK.equals(action)) {
             String incomingUserId = intent.getStringExtra(EXTRA_USER_ID);
             String incomingTripId = intent.getStringExtra(EXTRA_TRIP_ID);
@@ -195,7 +190,7 @@ public class TripForegroundService extends Service {
     public void onDestroy() {
         super.onDestroy();
         TripCaptureStateStore.State state = TripCaptureStateStore.load(this);
-        if (state.isValid()) {
+        if (state.isValid()) { // means the user didn't stop the trip(the system must have killed it)
             TripCaptureStateStore.markNeedsResume(this, true);
             Intent broadcast = new Intent(this, ServiceRestartReceiver.class);
             sendBroadcast(broadcast);
@@ -291,13 +286,13 @@ public class TripForegroundService extends Service {
                         locationManager.requestSingleUpdate();
                         lastGpsRequestTime = currentTime;
                     }
+
+
                     if (mediaScanner.canScanAnything()) {
                         long tripStartSec = tripStartTimeMs / 1000L;
                         long sinceSec     = Math.max(
-                                lastScanDateAddedSec - 2, tripStartSec);
-
+                                lastScanDateAddedSec - 2, tripStartSec); // -2 in case the item was added to the device's db later than it was taken
                         long maxSeen = mediaScanner.scan(sinceSec);
-
                         if (maxSeen > lastScanDateAddedSec) {
                             lastScanDateAddedSec = maxSeen;
                             TripCaptureStateStore.saveLastScanDateAddedSec(
