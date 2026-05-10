@@ -66,11 +66,12 @@ public class TripForegroundService extends Service {
     private SensorManager sensorManager;
     private SensorEventListener stepListener;
     private int stepCounterBaseline = -1;
-    private long lastStepDayOffset = -1;
     private long lastDayCardOffset = -1;
+    private int lastSavedSteps = 0;
+    private long lastStepDayOffset = -1;
+    private long lastFetchTime = 0;
+    private static final long CACHE_MS = 30_000;
     private final java.util.Set<String> writtenUris = new java.util.HashSet<>();
-    private long lastGpsRequestTime = 0;
-    private static final long GPS_INTERVAL_MS = TimeUnit.MINUTES.toMillis(90);
 
     // -------------------------------------------------------------------------
     // Lifecycle
@@ -105,7 +106,7 @@ public class TripForegroundService extends Service {
                     ? state.lastScanDateAddedSec : startSec;
 
             tripJsonWriter = new TripJsonWriter(
-                    getApplicationContext(), tripId, tripStartTimeMs);
+                    getApplicationContext(), tripId);
 
             Log.d(TAG, "Resuming trip, tripId=" + tripId);
             startForeground(NOTIF_ID, buildNotification("Resuming trip capture…"));
@@ -138,7 +139,7 @@ public class TripForegroundService extends Service {
                     ? state.lastScanDateAddedSec : startSec;
 
             tripJsonWriter = new TripJsonWriter(
-                    getApplicationContext(), tripId, tripStartTimeMs);
+                    getApplicationContext(), tripId);
 
             startForeground(NOTIF_ID, buildNotification("Capturing trip items…"));
             startMediaScanLoop();
@@ -196,7 +197,7 @@ public class TripForegroundService extends Service {
             sendBroadcast(broadcast);
         }
         if (tripJsonWriter != null) {
-            tripJsonWriter.close(System.currentTimeMillis());
+            tripJsonWriter.close();
             tripJsonWriter = null;
         }
         if (sensorManager != null && stepListener != null) {
@@ -205,7 +206,6 @@ public class TripForegroundService extends Service {
             stepListener = null;
         }
         stopCapture();
-        locationManager.stop();
         executor.shutdownNow();
     }
 
@@ -221,38 +221,39 @@ public class TripForegroundService extends Service {
         running = true;
 
         mediaScanner = new MediaScanner(getApplicationContext(), scannedItem -> {
-            Location loc = locationManager.getLastLocation();
-            Double lat = null, lng = null;
-            if (locationManager.hasPermission() && loc != null) {
-                lat = loc.getLatitude();
-                lng = loc.getLongitude();
-            }
-            String ext = scannedItem.type == TripItemType.VIDEO ? ".mp4" :
-                    scannedItem.type == TripItemType.AUDIO ? ".mp3" : ".jpg";
+            locationManager.requestCurrentLocation(location ->{
+                Double lat = null;
+                Double lng = null;
+                if(location !=null){
+                    lat = location.getLatitude();
+                    lng = location.getLongitude();
+                }
+                String ext = scannedItem.type == TripItemType.VIDEO ? ".mp4" :
+                        scannedItem.type == TripItemType.AUDIO ? ".mp3" : ".jpg";
 
-            String internalUri = MediaCloner.cloneToInternal(
-                    getApplicationContext(), scannedItem.uri, ext);
+                String internalUri = MediaCloner.cloneToInternal(
+                        getApplicationContext(), scannedItem.uri, ext);
+                TripItemEntity item = new TripItemEntity(
+                        UUID.randomUUID().toString(),
+                        tripId,
+                        userId,
+                        scannedItem.type,
+                        scannedItem.timestampMs,
+                        internalUri,
+                        null,
+                        lat,
+                        lng,
+                        null,
+                        scannedItem.buildMetadataJson()
+                );
+                tripRepository.insertTripItem(item);
 
-            TripItemEntity item = new TripItemEntity(
-                    UUID.randomUUID().toString(),
-                    tripId,
-                    userId,
-                    scannedItem.type,
-                    scannedItem.timestampMs,
-                    internalUri,
-                    null,
-                    lat,
-                    lng,
-                    null,
-                    scannedItem.buildMetadataJson()
-            );
+                if (tripJsonWriter != null) {
+                    tripJsonWriter.append(item);
+                }
 
-            tripRepository.insertTripItem(item);
-
-            if (tripJsonWriter != null && !writtenUris.contains(item.localUri)) {
-                writtenUris.add(item.localUri);
-                tripJsonWriter.append(item);
-            }
+                Log.d(TAG, "Saved item with fresh location");
+            });
         });
 
         scanLoopFuture = executor.submit(() -> {
@@ -264,8 +265,6 @@ public class TripForegroundService extends Service {
 
                     if (dayOffset != lastDayCardOffset) {
                         lastDayCardOffset = dayOffset;
-                        locationManager.resetDailyDistance();
-
                         String dayLabel = "Day " + (dayOffset + 1);
 
                         TripItemEntity dayEntity = new TripItemEntity(
@@ -281,11 +280,7 @@ public class TripForegroundService extends Service {
                         if (tripJsonWriter != null) tripJsonWriter.append(dayEntity);
                         Log.d(TAG, "Inserted DAY card for " + dayLabel);
                     }
-                    if(currentTime - lastGpsRequestTime >= GPS_INTERVAL_MS){
-                        Log.i(TAG, "GPS interval finished. requesting single update");
-                        locationManager.requestSingleUpdate();
-                        lastGpsRequestTime = currentTime;
-                    }
+
 
 
                     if (mediaScanner.canScanAnything()) {
@@ -299,7 +294,6 @@ public class TripForegroundService extends Service {
                                     this, lastScanDateAddedSec);
                         }
                     }
-                    saveGpsBasedSteps();
                     Thread.sleep(90_000);
                 } catch (InterruptedException e) {
                     running = false;
@@ -323,7 +317,7 @@ public class TripForegroundService extends Service {
         sensorManager = (android.hardware.SensorManager)
                 getSystemService(SENSOR_SERVICE);
         if (sensorManager == null) {
-            Log.d(TAG, "No SensorManager — steps will use GPS estimate");
+            Log.d(TAG, "No SensorManager — no steps updates");
             return;
         }
 
@@ -331,19 +325,59 @@ public class TripForegroundService extends Service {
                 android.hardware.Sensor.TYPE_STEP_COUNTER);
 
         if (stepSensor != null) {
-            stepListener = new android.hardware.SensorEventListener() {
+            stepListener = new SensorEventListener()  {
                 @Override
                 public void onSensorChanged(android.hardware.SensorEvent event) {
                     int totalSteps = (int) event.values[0];
+
                     if (stepCounterBaseline < 0) {
                         stepCounterBaseline = totalSteps;
                         return;
                     }
-                    checkAndSaveSteps(totalSteps - stepCounterBaseline, false);
+
+                    int currentSteps = totalSteps - stepCounterBaseline;
+
+                    long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
+                    long dayOffset = elapsedMs / TimeUnit.MINUTES.toMillis(2);
+
+                    if (dayOffset != lastStepDayOffset) {
+                        lastStepDayOffset = dayOffset;
+                        lastSavedSteps = 0;
+                    }
+
+                    int deltaSteps = currentSteps - lastSavedSteps;
+
+                    if (deltaSteps <= 0) return;
+
+                    lastSavedSteps = currentSteps;
+
+                    String dayLabel = "Day " + (dayOffset + 1);
+
+                    TripItemEntity stepsItem = new TripItemEntity(
+                            UUID.randomUUID().toString(),
+                            tripId,
+                            userId,
+                            TripItemType.STEPS,
+                            System.currentTimeMillis(),
+                            null,
+                            null,
+                            null,
+                            null,
+                            dayLabel + " — " + currentSteps + " steps",
+                            buildStepsMeta(currentSteps, dayLabel)
+                    );
+
+                    tripRepository.insertTripItem(stepsItem);
+
+                    if (tripJsonWriter != null) {
+                        tripJsonWriter.append(stepsItem);
+                    }
+
+                    Log.d(TAG, "Steps updated: " + currentSteps);
                 }
+
                 @Override
-                public void onAccuracyChanged(
-                        android.hardware.Sensor sensor, int accuracy) {}
+                public void onAccuracyChanged(android.hardware.Sensor sensor, int accuracy) {}
             };
             sensorManager.registerListener(
                     stepListener, stepSensor,
@@ -354,44 +388,9 @@ public class TripForegroundService extends Service {
         }
     }
 
-    private void checkAndSaveSteps(int steps, boolean isGpsBased) {
-        long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
-        long dayOffset = elapsedMs / TimeUnit.MINUTES.toMillis(2);
-
-        if (dayOffset == lastStepDayOffset) return;
-        lastStepDayOffset = dayOffset;
-
-        String dayLabel = "Day " + (dayOffset + 1);
-        String title    = dayLabel + " — " + steps + " steps"
-                + (isGpsBased ? " (estimated)" : "");
-        String meta     = buildStepsMeta(steps, dayLabel);
-
-        TripItemEntity stepsItem = new TripItemEntity(
-                UUID.randomUUID().toString(),
-                tripId, userId,
-                TripItemType.STEPS,
-                System.currentTimeMillis(),
-                null, null, null, null,
-                title, meta
-        );
-        tripRepository.insertTripItem(stepsItem);
-        if (tripJsonWriter != null) tripJsonWriter.append(stepsItem);
-        Log.d(TAG, "Saved steps for " + dayLabel + ": " + steps
-                + (isGpsBased ? " (GPS estimated)" : " (sensor)"));
-    }
-
-    private void saveGpsBasedSteps() {
-        if (stepListener != null) return;
-        if (locationManager == null) return;
-        int estimatedSteps = locationManager.getEstimatedSteps();
-        Log.d(TAG, "saveGpsBasedSteps called, estimatedSteps=" + estimatedSteps);
-        if (estimatedSteps <= 0) return;
-        checkAndSaveSteps(estimatedSteps, true);
-        locationManager.resetDailyDistance();
-    }
     private void stopRealTrip() {
         if (tripJsonWriter != null) {
-            tripJsonWriter.close(System.currentTimeMillis());
+            tripJsonWriter.close();
             tripJsonWriter = null;
         }
         TripCaptureStateStore.clear(this);
@@ -400,27 +399,7 @@ public class TripForegroundService extends Service {
             sensorManager = null;
             stepListener = null;
         }
-        // Save final steps on trip stop
-        if (locationManager != null) {
-            int steps = locationManager.getEstimatedSteps();
-            if (steps > 0) {
-                long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
-                long dayOffset = elapsedMs / TimeUnit.MINUTES.toMillis(2);
-                String dayLabel = "Day " + (dayOffset + 1);
-                String title    = dayLabel + " — " + steps + " steps";
-                TripItemEntity stepsItem = new TripItemEntity(
-                        UUID.randomUUID().toString(),
-                        tripId, userId,
-                        TripItemType.STEPS,
-                        System.currentTimeMillis(),
-                        null, null, null, null,
-                        title,
-                        buildStepsMeta(steps, dayLabel)
-                );
-                tripRepository.insertTripItem(stepsItem);
-                Log.d(TAG, "Saved final steps on trip stop: " + steps);
-            }
-        }
+
         stopCapture();
         locationManager.stop();
         stopForeground(true);

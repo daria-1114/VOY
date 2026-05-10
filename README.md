@@ -61,7 +61,10 @@ TO-DO:
 - ~~high demand error for gemini fix for audio~~ 
 
 - TO DO list for each trip that is automatically checked off(for landmarks)
-- the foreground service should ask for location whenever a new picture is inserted and add everything in JSON; when the day ends the items are inserted into room.
+- ~~the foreground service should ask for location whenever a new picture is inserted~~ 
+- add everything in JSON whenever items are scanned
+- gps estimated steps based only on step sensor
+- request ignore battery optimizations & workmanager to periodically check if the service is still running
 
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
