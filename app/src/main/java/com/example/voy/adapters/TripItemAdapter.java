@@ -489,7 +489,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
             MaterialButton btnMic = dialogView.findViewById(R.id.btnSpeechToText);
             btnAi.setVisibility(item.type == TripItemType.AUDIO ?
                     View.GONE : View.VISIBLE);
-            btnMic.setVisibility(item.type == com.example.voy.enums.TripItemType.AUDIO
+            btnMic.setVisibility(item.type == TripItemType.AUDIO
                     ? View.VISIBLE : View.GONE);
             etNote.setText(existingNotes);
 
