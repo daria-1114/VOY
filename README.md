@@ -28,7 +28,7 @@ TO-DO:
    - button for Narrative Generation
    
 
-
+# TO DO LIST
 
 
 - ~~ability to add notes on a trip in the beginning~~ 
@@ -58,7 +58,10 @@ TO-DO:
 - ~~days being independent from steps~~
 - clean up the app
 - ~~save items to app's internal storage so that the AI will always be able to reach them and not be based on android:requestLegacyExternalStorage="true", which is deprecated.~~
-- high demand error for gemini fix for audio 
+- ~~high demand error for gemini fix for audio~~ 
+
+- TO DO list for each trip that is automatically checked off(for landmarks)
+- the foreground service should ask for location whenever a new picture is inserted and add everything in JSON; when the day ends the items are inserted into room.
 
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
@@ -66,7 +69,7 @@ the service is only location because dataSync kills the service after 6 hours
 !! change export schema for the db to true 
 
 
-###EXTRA INFO
+### EXTRA INFO
 
 export trip to json:
 adb pull /sdcard/Android/data/com.example.voy/files/Voy/ D:\Desktop\Voy
