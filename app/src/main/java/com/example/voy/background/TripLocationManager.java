@@ -24,46 +24,49 @@ import com.google.android.gms.tasks.CancellationTokenSource;
 import org.jspecify.annotations.NonNull;
 
 public class TripLocationManager {
+    public interface CurrentLocationCallback {
+        void onLocation(@Nullable Location location);
+    }
     private static final String TAG = "TripLocationManager_PowerSave";
-    private float totalDistanceMeters = 0f;
-    private Location previousLocation = null;
     private final Context context;
     private final FusedLocationProviderClient fusedClient;
     private volatile Location lastLocation;
-
+    private long lastFetchTime = 0;
+    private static final long CACHE_MS = 300_000;
     public TripLocationManager(Context context) {
         this.context = context;
         this.fusedClient = LocationServices.getFusedLocationProviderClient(context);
     }
-
     @SuppressLint("MissingPermission")
-    public void requestSingleUpdate(){
+    public void requestCurrentLocation(CurrentLocationCallback callback){
         if(!hasPermission()){
-            Log.w(TAG, "Cannot fetch location- no permission");
+            Log.w(TAG, "No permission for current location");
+            callback.onLocation(null);
             return;
         }
-        Log.d(TAG, "requesting location update...");
-        CancellationTokenSource token = new CancellationTokenSource();
-        fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, token.getToken())
-                .addOnSuccessListener(loc ->{
-                    if(loc != null){
-                        updateDistanceMeters(loc);
-                        lastLocation = loc;
-                        Log.i(TAG, "Location success: LAT=" + loc.getLatitude() +" LNG="+loc.getLongitude());
-                    }else{
-                        Log.w(TAG, "Location came back null");
-                    }
-                })
-                .addOnFailureListener(e -> Log.e(TAG, "failed to get update",e));
-    }
-
-    private void updateDistanceMeters(Location loc) {
-        if(previousLocation != null){
-            float dist = previousLocation.distanceTo(loc);
-            totalDistanceMeters += dist;
-            Log.d(TAG, "Distance added:"+dist+"meters total: "+totalDistanceMeters);
+        if (System.currentTimeMillis() - lastFetchTime < CACHE_MS && lastLocation != null) {
+            Log.d(TAG, "Returning cached location");
+            callback.onLocation(lastLocation);
+            return;
         }
-        previousLocation = loc;
+        lastFetchTime = System.currentTimeMillis();
+        CancellationTokenSource token = new CancellationTokenSource();
+        fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY,token.getToken())
+                .addOnSuccessListener(loc -> {
+                    if(loc != null){
+                        lastLocation = loc;
+                        Log.i(TAG,
+                                "Current location: LAT="
+                                        + loc.getLatitude()
+                                        + " LNG="
+                                        + loc.getLongitude());
+                    }
+                    callback.onLocation(loc);
+                })
+                .addOnFailureListener(e -> {
+                    Log.e(TAG, "Failed current location", e);
+                    callback.onLocation(null);
+                });
     }
 
     public void stop(){
@@ -79,12 +82,5 @@ public class TripLocationManager {
         return ContextCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;
     }
-    public int getEstimatedSteps(){
-        return (int)(totalDistanceMeters/0.762f);
-    }
 
-    public void resetDailyDistance(){
-        totalDistanceMeters = 0f;
-        previousLocation = null;
-    }
 }
