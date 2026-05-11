@@ -62,10 +62,10 @@ TO-DO:
 
 - TO DO list for each trip that is automatically checked off(for landmarks)
 - ~~the foreground service should ask for location whenever a new picture is inserted~~ 
-- add everything in JSON whenever items are scanned
-- gps estimated steps based only on step sensor
+- ~~add everything in JSON whenever items are scanned~~
+- ~~gps estimated steps based only on step sensor~~
 - request ignore battery optimizations & workmanager to periodically check if the service is still running
-
+- duplicate items
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
 
@@ -77,7 +77,9 @@ the service is only location because dataSync kills the service after 6 hours
 export trip to json:
 adb pull /sdcard/Android/data/com.example.voy/files/Voy/ D:\Desktop\Voy
 
-sdcard → Android → data → com.example.voy → files → Voy
+sdcard → Android → data → com.example.voy → files → Voy (before)
+
+JSON files internal storage path: **/data/data/com.example.voy/files/trips/**
 
 adb pull /sdcard/Android/data/com.example.voy/files/Voy/trip_<tripId>.json C:\Users\YourUsername\Desktop\ -- only for a specific one
 

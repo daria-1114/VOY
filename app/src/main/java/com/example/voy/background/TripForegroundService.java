@@ -5,6 +5,8 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Intent;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.location.Location;
@@ -69,8 +71,7 @@ public class TripForegroundService extends Service {
     private long lastDayCardOffset = -1;
     private int lastSavedSteps = 0;
     private long lastStepDayOffset = -1;
-    private long lastFetchTime = 0;
-    private static final long CACHE_MS = 30_000;
+    private int stepBaselineForDay = 0;
     private final java.util.Set<String> writtenUris = new java.util.HashSet<>();
 
     // -------------------------------------------------------------------------
@@ -206,6 +207,7 @@ public class TripForegroundService extends Service {
             stepListener = null;
         }
         stopCapture();
+        locationManager.stop();
         executor.shutdownNow();
     }
 
@@ -233,6 +235,8 @@ public class TripForegroundService extends Service {
 
                 String internalUri = MediaCloner.cloneToInternal(
                         getApplicationContext(), scannedItem.uri, ext);
+                if(writtenUris.contains(internalUri)) return;
+                writtenUris.add(internalUri);
                 TripItemEntity item = new TripItemEntity(
                         UUID.randomUUID().toString(),
                         tripId,
@@ -314,20 +318,21 @@ public class TripForegroundService extends Service {
     }
 
     private void startStepCounting() {
-        sensorManager = (android.hardware.SensorManager)
-                getSystemService(SENSOR_SERVICE);
+        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         if (sensorManager == null) {
             Log.d(TAG, "No SensorManager — no steps updates");
             return;
         }
 
-        android.hardware.Sensor stepSensor = sensorManager.getDefaultSensor(
-                android.hardware.Sensor.TYPE_STEP_COUNTER);
-
-        if (stepSensor != null) {
-            stepListener = new SensorEventListener()  {
+        Sensor stepSensor = sensorManager.getDefaultSensor(
+                Sensor.TYPE_STEP_COUNTER);
+        if (stepSensor == null) {
+            Log.d(TAG, "No step sensor available");
+            return;
+        }
+        stepListener = new SensorEventListener()  {
                 @Override
-                public void onSensorChanged(android.hardware.SensorEvent event) {
+                public void onSensorChanged(SensorEvent event) {
                     int totalSteps = (int) event.values[0];
 
                     if (stepCounterBaseline < 0) {
@@ -342,14 +347,15 @@ public class TripForegroundService extends Service {
 
                     if (dayOffset != lastStepDayOffset) {
                         lastStepDayOffset = dayOffset;
+                        stepBaselineForDay = currentSteps;
                         lastSavedSteps = 0;
                     }
 
-                    int deltaSteps = currentSteps - lastSavedSteps;
+                    int stepsToday = currentSteps - stepBaselineForDay;
 
-                    if (deltaSteps <= 0) return;
+                    if (stepsToday - lastSavedSteps < 1000) return;
 
-                    lastSavedSteps = currentSteps;
+                    lastSavedSteps = stepsToday;
 
                     String dayLabel = "Day " + (dayOffset + 1);
 
@@ -383,9 +389,7 @@ public class TripForegroundService extends Service {
                     stepListener, stepSensor,
                     android.hardware.SensorManager.SENSOR_DELAY_NORMAL);
             Log.d(TAG, "Step counter sensor registered");
-        } else {
-            Log.d(TAG, "No step sensor — steps will use GPS estimate");
-        }
+
     }
 
     private void stopRealTrip() {
