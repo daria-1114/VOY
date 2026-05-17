@@ -4,9 +4,11 @@ import android.content.Context;
 
 import androidx.lifecycle.LiveData;
 
+import com.example.voy.data.dao.LandmarkDao;
 import com.example.voy.data.dao.TripDao;
 import com.example.voy.data.dao.TripItemDao;
 import com.example.voy.data.db.AppDatabase;
+import com.example.voy.data.entities.LandmarkEntity;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.entities.TripItemEntity;
 
@@ -19,12 +21,14 @@ import java.util.concurrent.Executors;
 public class TripRepository {
     private final TripDao tripDao;
     private final TripItemDao tripItemDao;
+    private final LandmarkDao landmarkDao;
     private final ExecutorService dbExecutor = Executors.newSingleThreadExecutor();
 
     public TripRepository(Context context) {
         AppDatabase db = AppDatabase.getInstance(context);
         this.tripDao = db.tripDao();
         this.tripItemDao = db.tripItemDao();
+        this.landmarkDao = db.landmarkDao();
     }
 
     //---------------------------OBSERVE(listen for changes in db and update ui-automatically through livedata)---------------------
@@ -111,6 +115,24 @@ public class TripRepository {
     }
     public LiveData<TripEntity> observeTrip(String userId, String tripId) {
         return tripDao.observeTrip(userId, tripId);
+    }
+
+    //LANDMARKS
+    public void insertLandmark(LandmarkEntity landmark){
+        dbExecutor.execute(() -> landmarkDao.insert(landmark));
+    }
+    public LiveData<List<LandmarkEntity>> observeLandmarks(String tripId){
+        return landmarkDao.observeForTrip(tripId);
+    }
+
+    public void markLandmarkVisited(String id){
+        dbExecutor.execute(() -> landmarkDao.markVisited(id));
+    }
+    public void deleteLandmark(String id){
+        dbExecutor.execute(() -> landmarkDao.delete(id));
+    }
+    public List<LandmarkEntity> getUnvisitedLandmarks(String tripId) {
+        return landmarkDao.getUnvisitedForTrip(tripId);
     }
     public interface ExistsCallback {
         void onResult(boolean exists);

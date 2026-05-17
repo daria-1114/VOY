@@ -60,12 +60,12 @@ TO-DO:
 - ~~save items to app's internal storage so that the AI will always be able to reach them and not be based on android:requestLegacyExternalStorage="true", which is deprecated.~~
 - ~~high demand error for gemini fix for audio~~ 
 
-- TO DO list for each trip that is automatically checked off(for landmarks)
+- ~~TO DO list for each trip that is automatically checked off(for landmarks)~~
 - ~~the foreground service should ask for location whenever a new picture is inserted~~ 
 - ~~add everything in JSON whenever items are scanned~~
 - ~~gps estimated steps based only on step sensor~~
 - request ignore battery optimizations & workmanager to periodically check if the service is still running
-- duplicate items
+- ~~duplicate items~~
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
 

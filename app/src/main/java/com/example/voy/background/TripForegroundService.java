@@ -19,6 +19,7 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 
 import com.example.voy.R;
+import com.example.voy.data.entities.LandmarkEntity;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
 import com.example.voy.enums.TripItemType;
@@ -29,6 +30,7 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,6 +76,10 @@ public class TripForegroundService extends Service {
     private int stepBaselineForDay = 0;
     private final java.util.Set<String> writtenUris = new java.util.HashSet<>();
 
+    //landmarks
+    private static final float VISITED_RADIUS_METERS = 200f;
+    private ExecutorService proximityExecutor;
+
     // -------------------------------------------------------------------------
     // Lifecycle
     // -------------------------------------------------------------------------
@@ -83,6 +89,7 @@ public class TripForegroundService extends Service {
         super.onCreate();
         tripRepository  = new TripRepository(getApplicationContext());
         executor        = Executors.newSingleThreadExecutor();
+        proximityExecutor = Executors.newSingleThreadExecutor();
         locationManager = new TripLocationManager(getApplicationContext());
         createNotificationChannel();
     }
@@ -223,6 +230,9 @@ public class TripForegroundService extends Service {
         running = true;
 
         mediaScanner = new MediaScanner(getApplicationContext(), scannedItem -> {
+            String originalUri = scannedItem.uri.toString();
+            if (writtenUris.contains(originalUri)) return;
+            writtenUris.add(originalUri);
             locationManager.requestCurrentLocation(location ->{
                 Double lat = null;
                 Double lng = null;
@@ -235,8 +245,7 @@ public class TripForegroundService extends Service {
 
                 String internalUri = MediaCloner.cloneToInternal(
                         getApplicationContext(), scannedItem.uri, ext);
-                if(writtenUris.contains(internalUri)) return;
-                writtenUris.add(internalUri);
+
                 TripItemEntity item = new TripItemEntity(
                         UUID.randomUUID().toString(),
                         tripId,
@@ -254,6 +263,9 @@ public class TripForegroundService extends Service {
 
                 if (tripJsonWriter != null) {
                     tripJsonWriter.append(item);
+                }
+                if (lat != null && lng != null) {
+                    checkLandmarkProximity(lat, lng);
                 }
 
                 Log.d(TAG, "Saved item with fresh location");
@@ -441,6 +453,7 @@ public class TripForegroundService extends Service {
                         buildDayMeta(dayNumber, dayLabel)
                 );
                 tripRepository.insertTripItem(dayEntity);
+
                 Log.d(TAG, "Mock inserted DAY card for " + dayLabel);
                 for (int i = 0; i < items.length(); i++) {
                     JSONObject itemObj  = items.getJSONObject(i);
@@ -483,6 +496,7 @@ public class TripForegroundService extends Service {
                     Log.d(TAG, "Mock inserted " + type + " ["
                             + filename + "] @ "
                             + (landmark != null ? landmark : "no landmark"));
+
                 }
 
                 // Steps at end of each day
@@ -535,7 +549,37 @@ public class TripForegroundService extends Service {
             return null;
         }
     }
+    private void checkLandmarkProximity(double photoLat, double photoLng) {
+        proximityExecutor.submit(() -> {
+            try {
+                List<LandmarkEntity> unvisited =
+                        tripRepository.getUnvisitedLandmarks(tripId);
+                Log.d(TAG, "Proximity check — photo: " + photoLat + ", " + photoLng
+                        + " | unvisited landmarks: " + (unvisited == null ? "null" : unvisited.size()));
+                if (unvisited == null || unvisited.isEmpty()) return;
 
+                for (LandmarkEntity landmark : unvisited) {
+                    if (landmark.lat == null || landmark.lng == null) continue;
+                    float[] result = new float[1];
+                    Location.distanceBetween(
+                            photoLat, photoLng,
+                            landmark.lat, landmark.lng,
+                            result);
+                    Log.d(TAG, "Landmark: " + landmark.name
+                            + " | stored: " + landmark.lat + ", " + landmark.lng
+                            + " | distance: " + result[0] + "m"
+                            + " | threshold: " + VISITED_RADIUS_METERS + "m");
+                    if (result[0] <= VISITED_RADIUS_METERS) {
+                        tripRepository.markLandmarkVisited(landmark.id);
+                        Log.d(TAG, "Landmark visited: " + landmark.name
+                                + " (" + result[0] + "m away)");
+                    }
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "Proximity check failed", e);
+            }
+        });
+    }
     private String buildStepsMeta(int steps, String dayLabel) {
         try {
             JSONObject obj = new JSONObject();
