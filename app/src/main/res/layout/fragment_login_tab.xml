@@ -19,11 +19,6 @@
            android:padding="20dp"
            android:orientation="vertical">
 
-           <ImageView
-               android:layout_width="374dp"
-               android:layout_height="200dp"
-               android:src="@drawable/baseline_person_24" />
-
            <EditText
                android:id="@+id/LogIn_email"
                android:layout_width="300dp"

@@ -32,7 +32,6 @@ public class TripLocationManager {
     private final FusedLocationProviderClient fusedClient;
     private volatile Location lastLocation;
     private long lastFetchTime = 0;
-    private static final long CACHE_MS = 300_000;
     public TripLocationManager(Context context) {
         this.context = context;
         this.fusedClient = LocationServices.getFusedLocationProviderClient(context);
@@ -44,19 +43,13 @@ public class TripLocationManager {
             callback.onLocation(null);
             return;
         }
-        if (System.currentTimeMillis() - lastFetchTime < CACHE_MS && lastLocation != null) {
-            Log.d(TAG, "Returning cached location");
-            callback.onLocation(lastLocation);
-            return;
-        }
-        lastFetchTime = System.currentTimeMillis();
         CancellationTokenSource token = new CancellationTokenSource();
         fusedClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY,token.getToken())
                 .addOnSuccessListener(loc -> {
                     if(loc != null){
                         lastLocation = loc;
                         Log.i(TAG,
-                                "Current location: LAT="
+                                "Fresh location: LAT="
                                         + loc.getLatitude()
                                         + " LNG="
                                         + loc.getLongitude());

@@ -21,12 +21,16 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.voy.R;
 import com.example.voy.adapters.AttachmentAdapter;
+import com.example.voy.adapters.LandmarkAdapter;
 import com.example.voy.adapters.TripItemAdapter;
 import com.example.voy.background.MediaCloner;
+import com.example.voy.background.OverpassApi;
+import com.example.voy.data.entities.LandmarkEntity;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -34,6 +38,7 @@ import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 public class TravelActivity extends AppCompatActivity {
 
@@ -48,6 +53,7 @@ public class TravelActivity extends AppCompatActivity {
         // Attachments
         private RecyclerView recyclerAttachments;
         private AttachmentAdapter attachmentAdapter;
+        private LandmarkAdapter landmarkAdapter;
 
         // Title views
         private TextView tvTripTitle;
@@ -63,6 +69,7 @@ public class TravelActivity extends AppCompatActivity {
         private MaterialButton btnEditTrip;
         private MaterialButton btnSaveTripTitle;
         private MaterialButton btnAddAttachment;
+        private MaterialButton btnToDoList;
 
         private boolean isEditMode = false;
         private TripEntity currentTrip;
@@ -100,10 +107,11 @@ public class TravelActivity extends AppCompatActivity {
                 btnEditTrip    = findViewById(R.id.btnEditTrip);
                 btnSaveTripTitle = findViewById(R.id.btnSaveTripTitle);
                 btnAddAttachment = findViewById(R.id.btnAddAttachment);
+                btnToDoList = findViewById(R.id.btnToDoList);
 
                 btnEditTrip.setOnClickListener(v -> enterEditMode());
                 btnSaveTripTitle.setOnClickListener(v -> saveAndExitEditMode());
-
+                btnToDoList.setOnClickListener(v -> showToDoSheet());
                 // Attachments
                 recyclerAttachments = findViewById(R.id.recyclerAttachments);
                 recyclerAttachments.setLayoutManager(
@@ -158,6 +166,79 @@ public class TravelActivity extends AppCompatActivity {
                                 adapter.setItems(items);
                                 buildChapterStrips(items);
                         });
+        }
+
+        private void showToDoSheet() {
+                BottomSheetDialog sheet = new BottomSheetDialog(this);
+                View sheetView = getLayoutInflater()
+                        .inflate(R.layout.todo_list, null);
+                sheet.setContentView(sheetView);
+                RecyclerView       recycler  = sheetView.findViewById(R.id.recyclerLandmarks);
+                TextView           tvEmpty   = sheetView.findViewById(R.id.tvEmptyLandmarks);
+                TextInputLayout    tilInput  = sheetView.findViewById(R.id.tilLandmarkInput);
+                TextInputEditText  etInput   = sheetView.findViewById(R.id.etLandmarkInput);
+                MaterialButton     btnAdd    = sheetView.findViewById(R.id.btnAddLandmark);
+                landmarkAdapter = new LandmarkAdapter(landmark ->
+                        new AlertDialog.Builder(this)
+                                .setTitle("Remove landmark?")
+                                .setPositiveButton("Remove", (d, w) ->
+                                        tripRepository.deleteLandmark(landmark.id))
+                                .setNegativeButton("Cancel", null)
+                                .show()
+                );
+                recycler.setLayoutManager(new LinearLayoutManager(this));
+                recycler.setAdapter(landmarkAdapter);
+                tripRepository.observeLandmarks(tripId).observe(this, landmarks -> {
+                        landmarkAdapter.setItems(landmarks);
+                        tvEmpty.setVisibility(
+                                landmarks == null || landmarks.isEmpty()
+                                        ? View.VISIBLE : View.GONE);
+                });
+                btnAdd.setOnClickListener(v ->
+                        tilInput.setVisibility(
+                                tilInput.getVisibility() == View.GONE
+                                        ? View.VISIBLE : View.GONE)
+                );
+                etInput.setOnEditorActionListener((v, actionId, event) -> {
+                        String name = etInput.getText() != null
+                                ? etInput.getText().toString().trim() : "";
+                        if (name.isEmpty()) return true;
+
+                        etInput.setEnabled(false);
+                        tilInput.setHelperText("Searching…");
+
+                        OverpassApi.fetchCoordinates(name, new OverpassApi.OnResult() {
+                                @Override
+                                public void onFound(double lat, double lng) {
+                                        runOnUiThread(() -> {
+                                                LandmarkEntity landmark = new LandmarkEntity(
+                                                        UUID.randomUUID().toString(),
+                                                        tripId, name,
+                                                        lat, lng,
+                                                        false,
+                                                        System.currentTimeMillis()
+                                                );
+                                                tripRepository.insertLandmark(landmark);
+                                                etInput.setText("");
+                                                etInput.setEnabled(true);
+                                                tilInput.setHelperText(null);
+                                                tilInput.setVisibility(View.GONE);
+                                        });
+                                }
+
+                                @Override
+                                public void onNotFound() {
+                                        runOnUiThread(() -> {
+                                                tilInput.setHelperText(
+                                                        "Landmark not found. Try a different name.");
+                                                etInput.setEnabled(true);
+                                        });
+                                }
+                        });
+                        return true;
+                });
+
+                sheet.show();
         }
 
         private void buildChapterStrips(List<TripItemEntity> items) {
