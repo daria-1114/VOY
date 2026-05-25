@@ -40,6 +40,19 @@ public class TripEntity {
         this.userId = userId;
     }
 
+    @Nullable
+    public Long getEndTime() {
+        return endTime;
+    }
+
+    public long getStartTime() {
+        return startTime;
+    }
+
+    public void setEndTime(@Nullable Long endTime) {
+        this.endTime = endTime;
+    }
+
     @NonNull
     public String getId() {
         return id;

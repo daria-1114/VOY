@@ -22,7 +22,9 @@ public interface TripDao {
     void update(TripEntity trip);
     @Query("SELECT * FROM trips WHERE userId = :userId AND status = 'ACTIVE' ORDER BY startTime DESC LIMIT 1")
     TripEntity getActiveTrip(String userId); // get the last active trip
-    @Query("SELECT * FROM trips WHERE userId = :userId AND status = 'ACTIVE' ORDER BY startTime DESC LIMIT 1")
+    @Query("SELECT * FROM trips WHERE userId = :userId")
+    List<TripEntity> getAllTripsSync(String userId);
+    @Query("SELECT * FROM trips WHERE userId = :userId AND (status = 'ACTIVE' OR status = 'PLANNED') ORDER BY startTime DESC LIMIT 1")
     LiveData<TripEntity> observeActiveTrip(String userId);
     @Query("SELECT * FROM trips WHERE userId = :userId ORDER BY startTime DESC")
     LiveData<List<TripEntity>> observeAllTrips(String userId); // get all trips based on the date added
@@ -35,7 +37,8 @@ public interface TripDao {
 
     @Query("UPDATE trips SET title = :newTitle WHERE userId = :userId AND id = :tripId")
     void updateTripTitle(String userId, String tripId, String newTitle);
-
+    @Query("UPDATE trips SET title = :newTitle, status = 'ACTIVE' WHERE userId = :userId AND id = :tripId")
+    void activatePlannedTrip(String userId, String tripId, String newTitle);
     @Query("UPDATE trips SET notes = :notes WHERE userId = :userId AND id = :tripId")
     void updateNotes(String userId, String tripId, String notes);
 
@@ -47,5 +50,6 @@ public interface TripDao {
 
     @Query("SELECT * FROM trips WHERE userId = :userId AND id = :tripId LIMIT 1")
     LiveData<TripEntity> observeTrip(String userId, String tripId);
-
+    @Query("SELECT EXISTS(SELECT 1 FROM trips WHERE userId = :userId AND status IN ('ACTIVE', 'PLANNED'))")
+    boolean hasActiveOrPlannedTripSync(String userId);
 }

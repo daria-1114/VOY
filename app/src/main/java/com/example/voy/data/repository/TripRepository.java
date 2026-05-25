@@ -1,6 +1,8 @@
 package com.example.voy.data.repository;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 
 import androidx.lifecycle.LiveData;
 
@@ -30,7 +32,9 @@ public class TripRepository {
         this.tripItemDao = db.tripItemDao();
         this.landmarkDao = db.landmarkDao();
     }
-
+    public interface OverlapCheckCallback {
+        void onResult(boolean isOverlapping);
+    }
     //---------------------------OBSERVE(listen for changes in db and update ui-automatically through livedata)---------------------
     public LiveData<TripEntity> observeActiveTrip(String userId) {
         return tripDao.observeActiveTrip(userId);
@@ -85,6 +89,9 @@ public class TripRepository {
     public void updateTripTitle(String userId, String tripId, String newTitle) {
         dbExecutor.execute(() -> tripDao.updateTripTitle(userId, tripId, newTitle));
     }
+    public void activatePlannedTrip(String userId, String tripId, String newTitle) {
+        dbExecutor.execute(() -> tripDao.activatePlannedTrip(userId, tripId, newTitle));
+    }
 
     public void updateTripNotes(String userId, String tripId, String notes) {
         dbExecutor.execute(() -> tripDao.updateNotes(userId, tripId, notes));
@@ -115,6 +122,14 @@ public class TripRepository {
     }
     public LiveData<TripEntity> observeTrip(String userId, String tripId) {
         return tripDao.observeTrip(userId, tripId);
+    }
+    public void checkSystemLockAsync(String userId, ExistsCallback callback) {
+        dbExecutor.execute(() -> {
+            boolean isLocked = tripDao.hasActiveOrPlannedTripSync(userId);
+            new Handler(Looper.getMainLooper()).post(() ->{
+                callback.onResult(isLocked);
+            });
+        });
     }
 
     //LANDMARKS

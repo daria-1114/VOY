@@ -45,6 +45,8 @@ public class TripForegroundService extends Service {
     public static final String EXTRA_USER_ID         = "extra_user_id";
     public static final String EXTRA_TRIP_ID         = "extra_trip_id";
     public static final String EXTRA_TRIP_START_TIME = "extra_trip_start_time";
+    public static final String EXTRA_IS_PREDEFINED     = "extra_is_predefined";
+    public static final String EXTRA_VACATION_END_TIME = "extra_vacation_end_time";
 
     private static final String CHANNEL_ID  = "trip_capture_channel";
     private static final int    NOTIF_ID    = 101;
@@ -75,7 +77,7 @@ public class TripForegroundService extends Service {
     private long lastStepDayOffset = -1;
     private int stepBaselineForDay = 0;
     private final java.util.Set<String> writtenUris = new java.util.HashSet<>();
-
+    private long tripEndTimeMs = -1;
     //landmarks
     private static final float VISITED_RADIUS_METERS = 200f;
     private ExecutorService proximityExecutor;
@@ -129,7 +131,8 @@ public class TripForegroundService extends Service {
             String incomingUserId = intent.getStringExtra(EXTRA_USER_ID);
             String incomingTripId = intent.getStringExtra(EXTRA_TRIP_ID);
             long   incomingStart  = intent.getLongExtra(EXTRA_TRIP_START_TIME, -1);
-
+            boolean isPredefined = intent.getBooleanExtra(EXTRA_IS_PREDEFINED, false);
+            tripEndTimeMs = intent.getLongExtra(EXTRA_VACATION_END_TIME, -1);
             if (incomingUserId == null || incomingTripId == null || incomingStart <= 0) {
                 stopSelf();
                 return START_NOT_STICKY;
@@ -138,6 +141,12 @@ public class TripForegroundService extends Service {
             userId          = incomingUserId;
             tripId          = incomingTripId;
             tripStartTimeMs = incomingStart;
+
+            if(isPredefined){
+                executor.submit(() ->{
+                    tripRepository.activatePlannedTrip(userId, tripId, "Active vacation");
+                });
+            }
 
             TripCaptureStateStore.saveActive(this, userId, tripId, tripStartTimeMs);
 
@@ -216,6 +225,7 @@ public class TripForegroundService extends Service {
         stopCapture();
         locationManager.stop();
         executor.shutdownNow();
+        proximityExecutor.shutdownNow();
     }
 
     @Nullable
@@ -277,7 +287,7 @@ public class TripForegroundService extends Service {
                 try {
                     long currentTime = System.currentTimeMillis();
                     long elapsedMs  = currentTime - tripStartTimeMs;
-                    long dayOffset  = elapsedMs / TimeUnit.MINUTES.toMillis(2);
+                    long dayOffset  = elapsedMs / TimeUnit.HOURS.toMillis(24);
 
                     if (dayOffset != lastDayCardOffset) {
                         lastDayCardOffset = dayOffset;
@@ -355,7 +365,7 @@ public class TripForegroundService extends Service {
                     int currentSteps = totalSteps - stepCounterBaseline;
 
                     long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
-                    long dayOffset = elapsedMs / TimeUnit.MINUTES.toMillis(2);
+                    long dayOffset = elapsedMs / TimeUnit.HOURS.toMillis(24);
 
                     if (dayOffset != lastStepDayOffset) {
                         lastStepDayOffset = dayOffset;
@@ -410,16 +420,18 @@ public class TripForegroundService extends Service {
             tripJsonWriter = null;
         }
         TripCaptureStateStore.clear(this);
+        TripCaptureStateStore.markNeedsResume(this, false);
         if (sensorManager != null && stepListener != null) {
             sensorManager.unregisterListener(stepListener);
             sensorManager = null;
             stepListener = null;
         }
-
+        executor.shutdownNow();
+        proximityExecutor.shutdownNow();
         stopCapture();
         locationManager.stop();
         stopForeground(true);
-        stopSelf();
+        stopSelf();//completely destroys this instance of the service
     }
     // Mock trip — reads res/raw/mock_trip.json, inserts into Room
     private void runMockTrip(String simUserId, String simTripId, long simStartMs) {
