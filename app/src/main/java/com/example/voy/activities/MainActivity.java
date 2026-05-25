@@ -12,6 +12,9 @@ import android.os.Bundle;
 
 import android.view.Gravity;
 import android.view.MenuItem;
+import android.view.View;
+import android.widget.Button;
+import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -22,6 +25,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
+import androidx.core.util.Pair;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -29,12 +33,20 @@ import com.example.voy.R;
 import com.example.voy.adapters.TripAdapter;
 import com.example.voy.background.TripCaptureStateStore;
 import com.example.voy.background.TripForegroundService;
+import com.example.voy.background.TripScheduler;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.repository.TripRepository;
 import com.google.android.material.appbar.MaterialToolbar;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+import com.google.android.material.button.MaterialButtonToggleGroup;
+import com.google.android.material.datepicker.MaterialDatePicker;
 import com.google.android.material.floatingactionbutton.ExtendedFloatingActionButton;
+import com.google.android.material.textfield.TextInputEditText;
 import com.google.firebase.auth.FirebaseAuth;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
@@ -51,6 +63,8 @@ public class MainActivity extends AppCompatActivity {
     private Runnable pendingStartTrip;
     private boolean serviceStartedByUi = false;
     private boolean mockTripStartedByUi = false;
+    private long plannedStartMs = -1;
+    private long plannedEndMs = -1;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -177,24 +191,17 @@ public class MainActivity extends AppCompatActivity {
         fabServiceToggle.setOnClickListener(v -> {
             if (userId == null) return;
             if(activeTrip == null){
-                requestTripPermissionsThen(() -> {
-                    String tripId = UUID.randomUUID().toString();
-                    long now = System.currentTimeMillis();
-
-                    TripEntity trip = new TripEntity(
-                            now,
-                            tripId,
-                            null,
-                            "ACTIVE",
-                            "",
-                            userId
-                    );
-                    tripRepository.insertTrip(trip);
-                    startTripService(tripId, userId, now);
-                });
-            } else {
+                showTripConfigurationSheet();
+            } else if("PLANNED".equals(activeTrip.status)) {
                 long end = System.currentTimeMillis();
                 tripRepository.finishTrip(userId, activeTrip.getId(), end);
+                TripScheduler.cancelTripActivation(MainActivity.this, activeTrip.getId());
+                Toast.makeText(this, "Trip timer canceled! Record saved to history.", Toast.LENGTH_SHORT).show();
+            }else{
+                long end = System.currentTimeMillis();
+                tripRepository.finishTrip(userId, activeTrip.getId(), end);
+                stopTripService();
+                Toast.makeText(this, "Trip stopped and saved!", Toast.LENGTH_SHORT).show();
             }
         });
         fabMockTrip.setOnClickListener(v->{
@@ -223,8 +230,99 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
+    private void showTripConfigurationSheet() {
+        BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(this);
+        View sheetView = getLayoutInflater().inflate(R.layout.trip_options_dialog_main, null);
+        bottomSheetDialog.setContentView(sheetView);
+        MaterialButtonToggleGroup toggleGroup = sheetView.findViewById(R.id.toggleGroupMode);
+        LinearLayout plannedFieldsContainer = sheetView.findViewById(R.id.plannedFieldsContainer);
+        TextInputEditText etCity = sheetView.findViewById(R.id.etDialogCity);
+        Button btnSelectDates = sheetView.findViewById(R.id.btnDialogSelectDates);
+        TextView tvDatesDisplay = sheetView.findViewById(R.id.tvDialogDatesDisplay);
+        Button btnConfirm = sheetView.findViewById(R.id.btnDialogConfirm);
+
+        plannedStartMs = -1;
+        plannedEndMs = -1;
+        toggleGroup.addOnButtonCheckedListener((group, checkedId, isChecked) ->{
+            if (isChecked) {
+                if (checkedId == R.id.btnModePlanned) {
+                    plannedFieldsContainer.setVisibility(android.view.View.VISIBLE);
+                } else {
+                    plannedFieldsContainer.setVisibility(android.view.View.GONE);
+                }
+            }
+        });
+        btnSelectDates.setOnClickListener(view ->{
+            MaterialDatePicker<Pair<Long,Long>> picker = MaterialDatePicker.Builder.dateRangePicker()
+                    .setTitleText("Define trip dates")
+                    .build();
+            picker.addOnPositiveButtonClickListener(selection ->{
+                plannedStartMs = selection.first;
+                plannedEndMs = selection.second;
+                SimpleDateFormat format = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
+                String range = format.format(new Date(plannedStartMs)) + "-" + format.format(new Date(plannedEndMs));
+                tvDatesDisplay.setText(range);
+            });
+            picker.show(getSupportFragmentManager(), "PLAN_TRIP_CALENDAR");
+        });
+
+        btnConfirm.setOnClickListener(view ->{
+            boolean isPlannedMode = (toggleGroup.getCheckedButtonId() == R.id.btnModePlanned);
+            final String tripId = UUID.randomUUID().toString();
+            final long now = System.currentTimeMillis();
+
+            tripRepository.checkSystemLockAsync(userId, isSystemLocked ->{
+                if(isSystemLocked){
+                    Toast.makeText(MainActivity.this,"Your already have an active or scheduled trip!", Toast.LENGTH_LONG).show();
+                    return;
+                }
+                if(isPlannedMode){
+                    String cityInput = etCity.getText().toString().trim();
+                    if(cityInput.isEmpty()){
+                        etCity.setError("Destination required");
+                        return;
+                    }
+                    if (plannedStartMs <= 0 || plannedEndMs <= 0) {
+                        Toast.makeText(this, "Please select trip dates", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    long calculatedTime = plannedStartMs;
+                    if (calculatedTime <= System.currentTimeMillis()) {
+                        calculatedTime = System.currentTimeMillis() + 5000; // 5 seconds from now for testing
+                    }
+                    final long finalActivationTime = calculatedTime;
+                    bottomSheetDialog.dismiss();
+                    requestTripPermissionsThen(() -> {
+
+                        TripEntity plannedTrip = new TripEntity(plannedStartMs, tripId, plannedEndMs, "PLANNED", cityInput, userId);
+                        tripRepository.insertTrip(plannedTrip);
+
+                        TripScheduler.scheduleTripActivation(MainActivity.this, tripId, userId, finalActivationTime);
+                        Toast.makeText(MainActivity.this, "Trip to " + cityInput + " scheduled!", Toast.LENGTH_LONG).show();
+                    });
+                }else{
+                    bottomSheetDialog.dismiss();
+                    requestTripPermissionsThen(() -> {
+                        TripEntity liveTrip = new TripEntity(now, tripId, null, "ACTIVE", "", userId);
+                        tripRepository.insertTrip(liveTrip);
+
+                        Intent serviceIntent = new Intent(MainActivity.this, TripForegroundService.class);
+                        serviceIntent.setAction(TripForegroundService.ACTION_START);
+                        serviceIntent.putExtra(TripForegroundService.EXTRA_USER_ID, userId);
+                        serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_ID, tripId);
+                        serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_START_TIME, now);
+                        serviceIntent.putExtra(TripForegroundService.EXTRA_IS_PREDEFINED, false);
+
+                        ContextCompat.startForegroundService(MainActivity.this, serviceIntent);
+                        serviceStartedByUi = true;
+                });
+                }
+            });
+        });
+        bottomSheetDialog.show();
+    }
+
     private void stopTripService() {
-        if(!serviceStartedByUi) return;
         Intent serviceIntent = new Intent(this, TripForegroundService.class);
         serviceIntent.setAction(TripForegroundService.ACTION_STOP);
         startService(serviceIntent);
@@ -258,10 +356,17 @@ public class MainActivity extends AppCompatActivity {
             fabServiceToggle.setText("Start Trip");
             fabServiceToggle.setIconResource(R.drawable.baseline_not_started_24);
             fabServiceToggle.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#4B6405")));
+            fabServiceToggle.setEnabled(true);
+        } else if ("PLANNED".equals(trip.status)){
+            fabServiceToggle.setText("Cancel Scheduled Trip");
+            fabServiceToggle.setIconResource(R.drawable.baseline_not_started_24);
+            fabServiceToggle.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#E65100"))); // Gray out to lock it down
+            fabServiceToggle.setEnabled(true);
         } else {
             fabServiceToggle.setText("Stop Trip");
             fabServiceToggle.setIconResource(R.drawable.baseline_stop_circle_24);
             fabServiceToggle.setBackgroundTintList(ColorStateList.valueOf(Color.RED));
+            fabServiceToggle.setEnabled(true);
         }
     }
     private void showPopupMenu(MaterialToolbar toolbar) {

@@ -66,6 +66,12 @@ TO-DO:
 - ~~gps estimated steps based only on step sensor~~
 - request ignore battery optimizations & workmanager to periodically check if the service is still running
 - ~~duplicate items~~
+- delete attachments
+- add permissions for alarms and schedules
+- add ai for trip recommendations
+- do something about the day cards
+- day cards inserted twice!!
+
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours
 

@@ -31,7 +31,6 @@ public class TripLocationManager {
     private final Context context;
     private final FusedLocationProviderClient fusedClient;
     private volatile Location lastLocation;
-    private long lastFetchTime = 0;
     public TripLocationManager(Context context) {
         this.context = context;
         this.fusedClient = LocationServices.getFusedLocationProviderClient(context);

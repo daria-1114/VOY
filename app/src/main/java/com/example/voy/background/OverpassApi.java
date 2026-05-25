@@ -29,7 +29,7 @@ public class OverpassApi {
                                 "  way[\"name:en\"=\""  + landmarkName + "\"][\"wikidata\"];" +
                                 "  relation[\"name:en\"=\"" + landmarkName + "\"][\"wikidata\"];" +
                                 ");" +
-                                "out center tags 1;";
+                                "out center 1;";
 
                 String encoded = URLEncoder.encode(query, "UTF-8");
                 String urlStr  = "https://overpass-api.de/api/interpreter?data=" + encoded;

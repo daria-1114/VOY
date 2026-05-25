@@ -61,12 +61,7 @@ public class MediaScanner {
         this.context = context;
         this.listener = listener;
     }
-    /**
-     * Scans all media collections for items added after sinceSec.
-     * Calls listener.onItemFound() for each new item found.
-     * Returns the highest DATE_ADDED seen, so the service can
-     * advance the scan window on the next pass.
-     */
+
     public long scan(long sinceSec){
         long maxSeen = sinceSec;
         if(canReadImages()){
