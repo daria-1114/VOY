@@ -26,6 +26,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 import androidx.core.util.Pair;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -36,6 +37,7 @@ import com.example.voy.background.TripForegroundService;
 import com.example.voy.background.TripScheduler;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.repository.TripRepository;
+import com.example.voy.viewmodels.MainViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButtonToggleGroup;
@@ -54,7 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView emptyMessage;
     private ExtendedFloatingActionButton fabServiceToggle;
     private ExtendedFloatingActionButton fabMockTrip;
-    private TripRepository tripRepository;
+    private MainViewModel mainViewModel;
     private TripEntity activeTrip;
     private String userId;
     private RecyclerView recyclerView;
@@ -112,11 +114,29 @@ public class MainActivity extends AppCompatActivity {
         );
         recyclerView = findViewById(R.id.recyclerView);
 
-        tripRepository = new TripRepository(getApplicationContext());
+        mainViewModel = new ViewModelProvider(this).get(MainViewModel.class);
         MaterialToolbar toolbar = findViewById(R.id.headerToolbar);
         fabServiceToggle = findViewById(R.id.fabServiceToggle);
         fabMockTrip = findViewById(R.id.fabMockTrip);
         emptyMessage = findViewById(R.id.emptyMessage);
+        if (getIntent() != null && getIntent().hasExtra("START_SCHEDULED_TRIP_ID")) {
+            String autoTripId = getIntent().getStringExtra("START_SCHEDULED_TRIP_ID");
+            String autoUserId = getIntent().getStringExtra("START_SCHEDULED_USER_ID");
+            long autoStartTime = getIntent().getLongExtra("START_SCHEDULED_START_TIME", System.currentTimeMillis());
+            long autoEndTime = getIntent().getLongExtra("START_SCHEDULED_END_TIME", -1);
+            Intent serviceIntent = new Intent(this, TripForegroundService.class);
+            serviceIntent.setAction(TripForegroundService.ACTION_START);
+            serviceIntent.putExtra(TripForegroundService.EXTRA_USER_ID, autoUserId);
+            serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_ID, autoTripId);
+            serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_START_TIME, autoStartTime);
+            serviceIntent.putExtra(TripForegroundService.EXTRA_IS_PREDEFINED, true);
+            if (autoEndTime > 0) {
+                serviceIntent.putExtra(TripForegroundService.EXTRA_VACATION_END_TIME, autoEndTime);
+            }
+            ContextCompat.startForegroundService(this, serviceIntent);
+            serviceStartedByUi = true;
+        }
+
 
         tripAdapter = new TripAdapter(new TripAdapter.OnTripActionListener() {
             @Override
@@ -126,7 +146,7 @@ public class MainActivity extends AppCompatActivity {
                     Toast.makeText(MainActivity.this, "Stop the trip before deleting.", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                tripRepository.deleteTrip(userId, trip.getId());
+                mainViewModel.deleteTrip(userId, trip.getId());
             }
 
             @Override
@@ -139,10 +159,6 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setAdapter(tripAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
-//        toolbar.setNavigationOnClickListener(v->{
-//            Intent intent = new Intent(this, MapsActivity.class);
-//            startActivity(intent);
-//        });
 
         toolbar.setOnMenuItemClickListener(item ->{
             if(item.getItemId() == R.id.actionAccount){
@@ -161,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
             fabServiceToggle.setText("Login required");
             return;
         }
-        tripRepository.observeAllTrips(userId).observe(this, trips -> {
+        mainViewModel.observeAllTrips(userId).observe(this, trips -> {
             tripAdapter.setTrips(trips);
 
             if (trips == null || trips.isEmpty()) {
@@ -171,18 +187,30 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         if(userId != null){
-            tripRepository.observeActiveTrip(userId).observe(this, trip -> {
+            mainViewModel.observeActiveTrip(userId).observe(this, trip -> {
                 activeTrip = trip;
                 updateFabUi(trip);
                 if (trip == null) {
                     stopTripService();
                     return;
                 }
+                if ("ACTIVE".equals(trip.status) && !serviceStartedByUi) {
+
+                    // The database is the source of truth. Boot the service back up!
+                    requestTripPermissionsThen(() ->
+                            startTripService(
+                                    trip.id,
+                                    userId,
+                                    trip.startTime,
+                                    trip.endTime != null ? trip.endTime : -1L
+                            )
+                    );
+                }
                 // Resume capture only when the system/boot told us to resume
                 boolean needsResume = TripCaptureStateStore.consumeNeedsResume(this);
                 if (needsResume) {
                     requestTripPermissionsThen(() ->
-                            startTripService(trip.id, userId, trip.startTime)
+                            startTripService(trip.id, userId, trip.startTime, trip.endTime != null ? trip.endTime : -1L)
                     );
                 }
             });
@@ -194,12 +222,12 @@ public class MainActivity extends AppCompatActivity {
                 showTripConfigurationSheet();
             } else if("PLANNED".equals(activeTrip.status)) {
                 long end = System.currentTimeMillis();
-                tripRepository.finishTrip(userId, activeTrip.getId(), end);
+                mainViewModel.finishTrip(userId, activeTrip.getId(), end);
                 TripScheduler.cancelTripActivation(MainActivity.this, activeTrip.getId());
                 Toast.makeText(this, "Trip timer canceled! Record saved to history.", Toast.LENGTH_SHORT).show();
             }else{
                 long end = System.currentTimeMillis();
-                tripRepository.finishTrip(userId, activeTrip.getId(), end);
+                mainViewModel.finishTrip(userId, activeTrip.getId(), end);
                 stopTripService();
                 Toast.makeText(this, "Trip stopped and saved!", Toast.LENGTH_SHORT).show();
             }
@@ -221,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
                         "Rome Mock Trip",
                         userId
                 );
-                tripRepository.insertTrip(trip);
+                mainViewModel.insertTrip(trip);
                 new android.os.Handler(getMainLooper()).postDelayed(() -> {
                     startMockTripService(newTripId, userId, now);
                 }, 300);
@@ -257,10 +285,24 @@ public class MainActivity extends AppCompatActivity {
                     .setTitleText("Define trip dates")
                     .build();
             picker.addOnPositiveButtonClickListener(selection ->{
-                plannedStartMs = selection.first;
-                plannedEndMs = selection.second;
-                SimpleDateFormat format = new SimpleDateFormat("dd MMM yyyy", Locale.getDefault());
-                String range = format.format(new Date(plannedStartMs)) + "-" + format.format(new Date(plannedEndMs));
+                java.util.Calendar utcCal = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC"));
+                java.util.Calendar localCal = java.util.Calendar.getInstance();
+                utcCal.setTimeInMillis(selection.first);
+                localCal.clear();
+                localCal.set(utcCal.get(java.util.Calendar.YEAR),
+                        utcCal.get(java.util.Calendar.MONTH),
+                        utcCal.get(java.util.Calendar.DAY_OF_MONTH),
+                        0, 0, 0);
+                plannedStartMs = localCal.getTimeInMillis();
+                utcCal.setTimeInMillis(selection.second);
+                localCal.clear();
+                localCal.set(utcCal.get(java.util.Calendar.YEAR),
+                        utcCal.get(java.util.Calendar.MONTH),
+                        utcCal.get(java.util.Calendar.DAY_OF_MONTH),
+                        23, 59, 59);
+                plannedEndMs = localCal.getTimeInMillis();
+                java.text.SimpleDateFormat format = new java.text.SimpleDateFormat("dd MMM yyyy", java.util.Locale.getDefault());
+                String range = format.format(new java.util.Date(plannedStartMs)) + " - " + format.format(new java.util.Date(plannedEndMs));
                 tvDatesDisplay.setText(range);
             });
             picker.show(getSupportFragmentManager(), "PLAN_TRIP_CALENDAR");
@@ -271,7 +313,7 @@ public class MainActivity extends AppCompatActivity {
             final String tripId = UUID.randomUUID().toString();
             final long now = System.currentTimeMillis();
 
-            tripRepository.checkSystemLockAsync(userId, isSystemLocked ->{
+            mainViewModel.checkSystemLockAsync(userId, isSystemLocked ->{
                 if(isSystemLocked){
                     Toast.makeText(MainActivity.this,"Your already have an active or scheduled trip!", Toast.LENGTH_LONG).show();
                     return;
@@ -288,23 +330,23 @@ public class MainActivity extends AppCompatActivity {
                     }
                     long calculatedTime = plannedStartMs;
                     if (calculatedTime <= System.currentTimeMillis()) {
-                        calculatedTime = System.currentTimeMillis() + 5000; // 5 seconds from now for testing
+                        calculatedTime = System.currentTimeMillis() + 5000;
                     }
                     final long finalActivationTime = calculatedTime;
                     bottomSheetDialog.dismiss();
                     requestTripPermissionsThen(() -> {
 
-                        TripEntity plannedTrip = new TripEntity(plannedStartMs, tripId, plannedEndMs, "PLANNED", cityInput, userId);
-                        tripRepository.insertTrip(plannedTrip);
+                        TripEntity plannedTrip = new TripEntity(finalActivationTime, tripId, plannedEndMs, "PLANNED", cityInput, userId);
+                        mainViewModel.insertTrip(plannedTrip);
 
-                        TripScheduler.scheduleTripActivation(MainActivity.this, tripId, userId, finalActivationTime);
+                        TripScheduler.scheduleTripActivation(MainActivity.this, tripId, userId, finalActivationTime,plannedEndMs);
                         Toast.makeText(MainActivity.this, "Trip to " + cityInput + " scheduled!", Toast.LENGTH_LONG).show();
                     });
                 }else{
                     bottomSheetDialog.dismiss();
                     requestTripPermissionsThen(() -> {
                         TripEntity liveTrip = new TripEntity(now, tripId, null, "ACTIVE", "", userId);
-                        tripRepository.insertTrip(liveTrip);
+                        mainViewModel.insertTrip(liveTrip);
 
                         Intent serviceIntent = new Intent(MainActivity.this, TripForegroundService.class);
                         serviceIntent.setAction(TripForegroundService.ACTION_START);
@@ -330,13 +372,16 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void startTripService(@NonNull String tripId,@NonNull String userId, long startTime) {
+    private void startTripService(@NonNull String tripId,@NonNull String userId, long startTime, long endTime) {
         if(serviceStartedByUi) return;
         Intent serviceIntent = new Intent(this, TripForegroundService.class);
         serviceIntent.setAction(TripForegroundService.ACTION_START);
         serviceIntent.putExtra(TripForegroundService.EXTRA_USER_ID, userId);
         serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_ID, tripId);
         serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_START_TIME, startTime);
+        if (endTime > 0) {
+            serviceIntent.putExtra(TripForegroundService.EXTRA_VACATION_END_TIME, endTime);
+        }
         ContextCompat.startForegroundService(this, serviceIntent);
         serviceStartedByUi = true;
     }

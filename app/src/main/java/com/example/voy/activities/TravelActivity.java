@@ -16,6 +16,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -29,6 +30,7 @@ import com.example.voy.data.entities.LandmarkEntity;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
+import com.example.voy.viewmodels.TravelViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.android.material.button.MaterialButton;
@@ -42,7 +44,7 @@ import java.util.UUID;
 
 public class TravelActivity extends AppCompatActivity {
 
-        private TripRepository tripRepository;
+        private TravelViewModel travelViewModel;
         private String tripId;
         private String userId;
 
@@ -133,10 +135,10 @@ public class TravelActivity extends AppCompatActivity {
                         return;
                 }
 
-                tripRepository = new TripRepository(getApplicationContext());
+                travelViewModel = new ViewModelProvider(this).get(TravelViewModel.class);
 
                 // Observe trip entity for title and notes
-                tripRepository.observeTrip(userId, tripId).observe(this, trip -> {
+                travelViewModel.observeTrip(userId, tripId).observe(this, trip -> {
                         if (trip == null) return;
                         currentTrip = trip;
                         if (!isEditMode) {
@@ -158,10 +160,10 @@ public class TravelActivity extends AppCompatActivity {
                 recyclerView.setHasFixedSize(false);
                 recyclerView.setItemViewCacheSize(0);
                 adapter = new TripItemAdapter(item -> showDeleteDialog(item),
-                        (item, notes) -> tripRepository.updateItemNotes(item.id, notes));
+                        (item, notes) -> travelViewModel.updateItemNotes(item.id, notes));
                 recyclerView.setAdapter(adapter);
 
-                tripRepository.observeAllItemsForTrip(userId, tripId)
+                travelViewModel.observeAllItemsForTrip(userId, tripId)
                         .observe(this, items -> {
                                 adapter.setItems(items);
                                 buildChapterStrips(items);
@@ -182,13 +184,13 @@ public class TravelActivity extends AppCompatActivity {
                         new AlertDialog.Builder(this)
                                 .setTitle("Remove landmark?")
                                 .setPositiveButton("Remove", (d, w) ->
-                                        tripRepository.deleteLandmark(landmark.id))
+                                        travelViewModel.deleteLandmark(landmark.id))
                                 .setNegativeButton("Cancel", null)
                                 .show()
                 );
                 recycler.setLayoutManager(new LinearLayoutManager(this));
                 recycler.setAdapter(landmarkAdapter);
-                tripRepository.observeLandmarks(tripId).observe(this, landmarks -> {
+                travelViewModel.observeLandmarks(tripId).observe(this, landmarks -> {
                         landmarkAdapter.setItems(landmarks);
                         tvEmpty.setVisibility(
                                 landmarks == null || landmarks.isEmpty()
@@ -218,7 +220,7 @@ public class TravelActivity extends AppCompatActivity {
                                                         false,
                                                         System.currentTimeMillis()
                                                 );
-                                                tripRepository.insertLandmark(landmark);
+                                                travelViewModel.insertLandmark(landmark);
                                                 etInput.setText("");
                                                 etInput.setEnabled(true);
                                                 tilInput.setHelperText(null);
@@ -299,8 +301,8 @@ public class TravelActivity extends AppCompatActivity {
                 String newNotes = etNotes.getText() != null
                         ? etNotes.getText().toString().trim() : "";
 
-                tripRepository.updateTripTitle(userId, tripId, newTitle);
-                tripRepository.updateTripNotes(userId, tripId, newNotes);
+                travelViewModel.updateTripTitle(userId, tripId, newTitle);
+                travelViewModel.updateTripNotes(userId, tripId, newNotes);
 
                 // Update UI
                 tvTripTitle.setText(newTitle);
@@ -339,7 +341,7 @@ public class TravelActivity extends AppCompatActivity {
                         // Persist permission so we can read it later
                         String internalUri = MediaCloner.cloneToInternal(this, uri, ".pdf");
 
-                        tripRepository.addAttachment(userId, tripId,internalUri);
+                        travelViewModel.addAttachment(userId, tripId,internalUri);
                 }
         }
 
@@ -347,7 +349,7 @@ public class TravelActivity extends AppCompatActivity {
                 new AlertDialog.Builder(this)
                         .setTitle("Remove attachment?")
                         .setPositiveButton("Remove", (d, w) ->
-                                tripRepository.removeAttachment(userId, tripId, uri))
+                                travelViewModel.removeAttachment(userId, tripId, uri))
                         .setNegativeButton("Cancel", null)
                         .show();
         }
@@ -387,7 +389,7 @@ public class TravelActivity extends AppCompatActivity {
                         .setTitle("Remove from journal?")
                         .setMessage("This will only remove it from your trip journal. It will stay in your phone gallery.")
                         .setPositiveButton("Remove", (d, which) -> {
-                                tripRepository.deleteTripItem(item.userId, item.tripId, item.id);
+                                travelViewModel.deleteTripItem(item.userId, item.tripId, item.id);
                                 Toast.makeText(this, "Removed from journal.", Toast.LENGTH_SHORT).show();
                         })
                         .setNegativeButton("Cancel", null)
