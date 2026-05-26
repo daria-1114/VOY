@@ -10,13 +10,14 @@ public class TripScheduler {
     private static final String TAG ="TripScheduler";
     public static final String ACTION_START_PLANNED = "com.example.voy.action.START_PLANNED_TRIP";
     public static final String ACTION_STOP_PLANNED = "com.example.voy.action.STOP_PLANNED_TRIP";
-    public static void scheduleTripActivation(Context context, String tripId, String userId, long startMs, long endMs){
+    public static void scheduleTripActivation(Context context, String tripId, String userId, long startMs, long endMs, String tripTitle){
         Intent intentAlarm = new Intent(context, ServiceRestartReceiver.class);
         intentAlarm.setAction(ACTION_START_PLANNED);
         intentAlarm.putExtra("tripId", tripId);
         intentAlarm.putExtra("userId", userId);
         intentAlarm.putExtra("startTime", startMs);
         intentAlarm.putExtra("endTime", endMs);
+        intentAlarm.putExtra("tripTitle", tripTitle);
         int requestCode = tripId.hashCode();// unique code using the trip id string's hashcode so multiple future vacations dont't overlap
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context,

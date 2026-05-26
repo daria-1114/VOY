@@ -33,6 +33,7 @@ public class ServiceRestartReceiver extends BroadcastReceiver {
             String userId = intent.getStringExtra("userId");
             long startTime = intent.getLongExtra("startTime", System.currentTimeMillis());
             long endTime = intent.getLongExtra("endTime", -1);
+            String tripTitle = intent.getStringExtra("tripTitle");
             Log.w(TAG, "Predefined vacation alarm clock triggered! Waking up background service for: " + tripId);
 
             Intent mainActivityIntent = new Intent(context, MainActivity.class);
@@ -40,6 +41,7 @@ public class ServiceRestartReceiver extends BroadcastReceiver {
             mainActivityIntent.putExtra("START_SCHEDULED_USER_ID", userId);
             mainActivityIntent.putExtra("START_SCHEDULED_START_TIME", startTime);
             mainActivityIntent.putExtra("START_SCHEDULED_END_TIME", endTime);
+            mainActivityIntent.putExtra("START_SCHEDULED_TRIP_TITLE", tripTitle);
             mainActivityIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
 
             PendingIntent pendingIntent = PendingIntent.getActivity(
