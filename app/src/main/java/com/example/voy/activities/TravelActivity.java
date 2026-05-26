@@ -200,6 +200,20 @@ public class TravelActivity extends AppCompatActivity {
                         tvEmpty.setVisibility(
                                 landmarks == null || landmarks.isEmpty()
                                         ? View.VISIBLE : View.GONE);
+                        boolean hasAiLandmarks = false;
+                        if (landmarks != null) {
+                                for (LandmarkEntity l : landmarks) {
+                                        if (l.dayNumber > 0) {
+                                                hasAiLandmarks = true;
+                                                break;
+                                        }
+                                }
+                        }
+                        if (currentTrip == null || currentTrip.endTime == null || currentTrip.endTime <= 0 || hasAiLandmarks) {
+                                btnAiSuggest.setVisibility(View.GONE);
+                        } else {
+                                btnAiSuggest.setVisibility(View.VISIBLE);
+                        }
                 });
                 btnAdd.setOnClickListener(v ->
                         tilInput.setVisibility(
