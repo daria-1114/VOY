@@ -124,11 +124,13 @@ public class MainActivity extends AppCompatActivity {
             String autoUserId = getIntent().getStringExtra("START_SCHEDULED_USER_ID");
             long autoStartTime = getIntent().getLongExtra("START_SCHEDULED_START_TIME", System.currentTimeMillis());
             long autoEndTime = getIntent().getLongExtra("START_SCHEDULED_END_TIME", -1);
+            String autoTripTitle = getIntent().getStringExtra("START_SCHEDULED_TRIP_TITLE");
             Intent serviceIntent = new Intent(this, TripForegroundService.class);
             serviceIntent.setAction(TripForegroundService.ACTION_START);
             serviceIntent.putExtra(TripForegroundService.EXTRA_USER_ID, autoUserId);
             serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_ID, autoTripId);
             serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_START_TIME, autoStartTime);
+            serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_TITLE, autoTripTitle);
             serviceIntent.putExtra(TripForegroundService.EXTRA_IS_PREDEFINED, true);
             if (autoEndTime > 0) {
                 serviceIntent.putExtra(TripForegroundService.EXTRA_VACATION_END_TIME, autoEndTime);
@@ -339,7 +341,7 @@ public class MainActivity extends AppCompatActivity {
                         TripEntity plannedTrip = new TripEntity(finalActivationTime, tripId, plannedEndMs, "PLANNED", cityInput, userId);
                         mainViewModel.insertTrip(plannedTrip);
 
-                        TripScheduler.scheduleTripActivation(MainActivity.this, tripId, userId, finalActivationTime,plannedEndMs);
+                        TripScheduler.scheduleTripActivation(MainActivity.this, tripId, userId, finalActivationTime,plannedEndMs, cityInput);
                         Toast.makeText(MainActivity.this, "Trip to " + cityInput + " scheduled!", Toast.LENGTH_LONG).show();
                     });
                 }else{

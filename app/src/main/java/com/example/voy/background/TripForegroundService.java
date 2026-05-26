@@ -47,6 +47,7 @@ public class TripForegroundService extends Service {
     public static final String EXTRA_TRIP_START_TIME = "extra_trip_start_time";
     public static final String EXTRA_IS_PREDEFINED     = "extra_is_predefined";
     public static final String EXTRA_VACATION_END_TIME = "extra_vacation_end_time";
+    public static final String EXTRA_TRIP_TITLE = "extra_trip_title";
 
     private static final String CHANNEL_ID  = "trip_capture_channel";
     private static final int    NOTIF_ID    = 101;
@@ -153,10 +154,41 @@ public class TripForegroundService extends Service {
             }
             if (tripEndTimeMs > 0) {
                 TripScheduler.scheduleTripDeactivation(getApplicationContext(), tripId, userId, tripEndTimeMs);
+                long plannedMsElapsed = System.currentTimeMillis() - tripStartTimeMs;
+                if(plannedMsElapsed <60_000){
+                    executor.submit(() ->{
+                        long durationMs = tripEndTimeMs - tripStartTimeMs;
+                        int totalDays = (int) Math.ceil((double) durationMs/TimeUnit.HOURS.toMillis(24));
+                        if(totalDays <= 0) totalDays = 1;
+                        for(int i = 0; i < totalDays; i++){
+                            int dayNumber = i+1;
+                            String dayLabel = "Day " + dayNumber;
+                            long dayTimestamp = tripStartTimeMs + (i * TimeUnit.HOURS.toMillis(24));
+                            TripItemEntity dayEntity = new TripItemEntity(
+                                    UUID.randomUUID().toString(),
+                                    tripId, userId,
+                                    TripItemType.DAY,
+                                    dayTimestamp,
+                                    null, null, null, null,
+                                    dayLabel,
+                                    buildDayMeta(dayNumber, dayLabel)
+                            );
+                            tripRepository.insertTripItem(dayEntity);
+                            if (tripJsonWriter != null) tripJsonWriter.append(dayEntity);
+                            Log.d(TAG, "Pre-inserted DAY card for Planned Trip: " + dayLabel);
+                        }
+                    });
+                }
+
             }
             if(isPredefined){
+                String tripTitle = intent.getStringExtra(EXTRA_TRIP_TITLE);
+                if (tripTitle == null || tripTitle.isEmpty()) {
+                    tripTitle = "Active Vacation";
+                }
+                final String finalTitle = tripTitle;
                 executor.submit(() ->{
-                    tripRepository.activatePlannedTrip(userId, tripId, "Active vacation");
+                    tripRepository.activatePlannedTrip(userId, tripId, finalTitle);
                 });
             }
 
@@ -297,28 +329,29 @@ public class TripForegroundService extends Service {
         scanLoopFuture = executor.submit(() -> {
             while (running) {
                 try {
-                    long currentTime = System.currentTimeMillis();
-                    long elapsedMs  = currentTime - tripStartTimeMs;
-                    long dayOffset  = elapsedMs / TimeUnit.HOURS.toMillis(24);
+                    if(tripEndTimeMs <= 0){
+                        long currentTime = System.currentTimeMillis();
+                        long elapsedMs  = currentTime - tripStartTimeMs;
+                        long dayOffset  = elapsedMs / TimeUnit.HOURS.toMillis(24);
 
-                    if (dayOffset != lastDayCardOffset) {
-                        lastDayCardOffset = dayOffset;
-                        String dayLabel = "Day " + (dayOffset + 1);
+                        if (dayOffset != lastDayCardOffset) {
+                            lastDayCardOffset = dayOffset;
+                            String dayLabel = "Day " + (dayOffset + 1);
 
-                        TripItemEntity dayEntity = new TripItemEntity(
-                                UUID.randomUUID().toString(),
-                                tripId, userId,
-                                TripItemType.DAY,
-                                System.currentTimeMillis(),
-                                null, null, null, null,
-                                dayLabel,
-                                buildDayMeta((int) dayOffset + 1, dayLabel)
-                        );
-                        tripRepository.insertTripItem(dayEntity);
-                        if (tripJsonWriter != null) tripJsonWriter.append(dayEntity);
-                        Log.d(TAG, "Inserted DAY card for " + dayLabel);
+                            TripItemEntity dayEntity = new TripItemEntity(
+                                    UUID.randomUUID().toString(),
+                                    tripId, userId,
+                                    TripItemType.DAY,
+                                    System.currentTimeMillis(),
+                                    null, null, null, null,
+                                    dayLabel,
+                                    buildDayMeta((int) dayOffset + 1, dayLabel)
+                            );
+                            tripRepository.insertTripItem(dayEntity);
+                            if (tripJsonWriter != null) tripJsonWriter.append(dayEntity);
+                            Log.d(TAG, "Inserted DAY card for " + dayLabel);
+                        }
                     }
-
 
 
                     if (mediaScanner.canScanAnything()) {
