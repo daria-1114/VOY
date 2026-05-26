@@ -13,16 +13,18 @@ public class LandmarkEntity {
     public String name;
     public Double lat;
     public Double lng;
+    public int dayNumber;
     public boolean isVisited;
     public long createdAt;
 
     public LandmarkEntity(@NonNull String id, String tripId, String name,
-                          Double lat, Double lng, boolean isVisited, long createdAt) {
+                          Double lat, Double lng,int dayNumber, boolean isVisited, long createdAt) {
         this.id        = id;
         this.tripId    = tripId;
         this.name      = name;
         this.lat       = lat;
         this.lng       = lng;
+        this.dayNumber = dayNumber;
         this.isVisited = isVisited;
         this.createdAt = createdAt;
     }

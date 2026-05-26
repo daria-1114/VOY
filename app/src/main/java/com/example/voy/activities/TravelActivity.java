@@ -25,11 +25,11 @@ import com.example.voy.adapters.AttachmentAdapter;
 import com.example.voy.adapters.LandmarkAdapter;
 import com.example.voy.adapters.TripItemAdapter;
 import com.example.voy.background.MediaCloner;
-import com.example.voy.background.OverpassApi;
+import com.example.voy.network.GeminiApi;
+import com.example.voy.network.OverpassApi;
 import com.example.voy.data.entities.LandmarkEntity;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.entities.TripItemEntity;
-import com.example.voy.data.repository.TripRepository;
 import com.example.voy.viewmodels.TravelViewModel;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.bottomsheet.BottomSheetDialog;
@@ -38,9 +38,13 @@ import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
 
+import org.json.JSONArray;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class TravelActivity extends AppCompatActivity {
 
@@ -180,6 +184,7 @@ public class TravelActivity extends AppCompatActivity {
                 TextInputLayout    tilInput  = sheetView.findViewById(R.id.tilLandmarkInput);
                 TextInputEditText  etInput   = sheetView.findViewById(R.id.etLandmarkInput);
                 MaterialButton     btnAdd    = sheetView.findViewById(R.id.btnAddLandmark);
+                MaterialButton btnAiSuggest = sheetView.findViewById(R.id.btnAiSuggest);
                 landmarkAdapter = new LandmarkAdapter(landmark ->
                         new AlertDialog.Builder(this)
                                 .setTitle("Remove landmark?")
@@ -201,6 +206,35 @@ public class TravelActivity extends AppCompatActivity {
                                 tilInput.getVisibility() == View.GONE
                                         ? View.VISIBLE : View.GONE)
                 );
+                if (currentTrip == null || currentTrip.endTime == null || currentTrip.endTime <= 0) {
+                        btnAiSuggest.setVisibility(View.GONE);
+                } else {
+                        btnAiSuggest.setVisibility(View.VISIBLE);
+                }
+                btnAiSuggest.setOnClickListener(v ->{
+                        if(currentTrip == null) return;
+                        String city = currentTrip.title != null && !currentTrip.title.isEmpty() ? currentTrip.title : "this city";
+                        long durationMs = currentTrip.endTime - currentTrip.startTime;
+                        int totalDays = (int) Math.ceil((double) durationMs / TimeUnit.HOURS.toMillis(24));
+                        if (totalDays <= 0) totalDays = 1;
+                        btnAiSuggest.setEnabled(false);
+                        btnAiSuggest.setText("Thinking...");
+                        GeminiApi.generateItinerary(city, totalDays, new GeminiApi.OnResult() {
+                                @Override
+                                public void onSuccess(JSONArray landmarks) {
+                                        btnAiSuggest.setEnabled(true);
+                                        btnAiSuggest.setText("Auto-Fill with AI");
+                                        showItineraryApprovalDialog(city, landmarks);
+                                }
+
+                                @Override
+                                public void onError(String error) {
+                                        btnAiSuggest.setEnabled(true);
+                                        btnAiSuggest.setText("Auto-Fill with AI");
+                                        Toast.makeText(TravelActivity.this, "AI could not generate itinerary: " + error, Toast.LENGTH_SHORT).show();
+                                }
+                        });
+                });
                 etInput.setOnEditorActionListener((v, actionId, event) -> {
                         String name = etInput.getText() != null
                                 ? etInput.getText().toString().trim() : "";
@@ -217,6 +251,7 @@ public class TravelActivity extends AppCompatActivity {
                                                         UUID.randomUUID().toString(),
                                                         tripId, name,
                                                         lat, lng,
+                                                        0,
                                                         false,
                                                         System.currentTimeMillis()
                                                 );
@@ -243,6 +278,69 @@ public class TravelActivity extends AppCompatActivity {
                 sheet.show();
         }
 
+        private void showItineraryApprovalDialog(String city, JSONArray landmarks) {
+                StringBuilder displayList = new StringBuilder();
+                try {
+                        for (int i = 0; i < landmarks.length(); i++) {
+                                org.json.JSONObject obj = landmarks.getJSONObject(i);
+                                displayList.append("Day ").append(obj.getInt("dayNumber"))
+                                        .append(": ").append(obj.getString("name")).append("\n");
+                        }
+                } catch (Exception e) {
+                        Toast.makeText(this, "Error reading AI data", Toast.LENGTH_SHORT).show();
+                        return;
+                }
+
+                new AlertDialog.Builder(this)
+                        .setTitle("AI Recommendations for " + city)
+                        .setMessage("Here are some great spots to track:\n\n" + displayList.toString() + "\nAdd these to your To-Do list?")
+                        .setPositiveButton("Accept", (dialog, which) -> saveAndResolveAiLandmarks(landmarks))
+                        .setNegativeButton("No Thanks", null)
+                        .show();
+        }
+        private void saveAndResolveAiLandmarks(JSONArray aiLandmarks) {
+                new Thread(() -> {
+                        try {
+                                for (int i = 0; i < aiLandmarks.length(); i++) {
+                                        JSONObject obj = aiLandmarks.getJSONObject(i);
+                                        String name = obj.getString("name");
+                                        int dayNum = obj.getInt("dayNumber");
+
+                                        // 1. Create the landmark with NULL coordinates
+                                        LandmarkEntity landmark = new LandmarkEntity(
+                                                UUID.randomUUID().toString(),
+                                                tripId,
+                                                name,
+                                                null, null, // lat/lng are null until Overpass finds them
+                                                dayNum,     // AI assigned day
+                                                false,
+                                                System.currentTimeMillis()
+                                        );
+
+                                        // 2. Insert it immediately so it shows up in the UI
+                                        travelViewModel.insertLandmark(landmark);
+
+                                        // 3. Ask Overpass for the exact GPS map coordinates
+                                        OverpassApi.fetchCoordinates(name, new OverpassApi.OnResult() {
+                                                @Override
+                                                public void onFound(double lat, double lng) {
+                                                        travelViewModel.updateLandmarkCoordinates(landmark.id, lat, lng);
+                                                }
+                                                @Override
+                                                public void onNotFound() {
+                                                        Log.w("TravelActivity", "Overpass could not find coordinates for: " + name);
+                                                }
+                                        });
+                                }
+
+                                // Show success message on main thread
+                                runOnUiThread(() -> Toast.makeText(TravelActivity.this, "Landmarks added!", Toast.LENGTH_SHORT).show());
+
+                        } catch (Exception e) {
+                                e.printStackTrace();
+                        }
+                }).start();
+        }
         private void buildChapterStrips(List<TripItemEntity> items) {
                 chapterContainer.removeAllViews();
                 if (items == null) {

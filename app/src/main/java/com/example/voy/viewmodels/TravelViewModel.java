@@ -59,4 +59,7 @@ public class TravelViewModel extends AndroidViewModel {
         tripRepository.deleteLandmark(id);
     }
 
+    public void updateLandmarkCoordinates(String id, double lat, double lng) {
+        tripRepository.updateLandmarkCoordinates(id,lat,lng);
+    }
 }
