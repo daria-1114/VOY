@@ -141,7 +141,19 @@ public class TripForegroundService extends Service {
             userId          = incomingUserId;
             tripId          = incomingTripId;
             tripStartTimeMs = incomingStart;
-
+            long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
+            if (elapsedMs > 60_000) {
+                // this is done to not print duplicate day cards if the service restarts
+                lastDayCardOffset = elapsedMs / TimeUnit.HOURS.toMillis(24);
+                lastStepDayOffset = lastDayCardOffset;
+            } else {
+                // It's a brand new trip and it starts normally
+                lastDayCardOffset = -1;
+                lastStepDayOffset = -1;
+            }
+            if (tripEndTimeMs > 0) {
+                TripScheduler.scheduleTripDeactivation(getApplicationContext(), tripId, userId, tripEndTimeMs);
+            }
             if(isPredefined){
                 executor.submit(() ->{
                     tripRepository.activatePlannedTrip(userId, tripId, "Active vacation");

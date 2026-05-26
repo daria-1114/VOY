@@ -32,9 +32,7 @@ public class TripRepository {
         this.tripItemDao = db.tripItemDao();
         this.landmarkDao = db.landmarkDao();
     }
-    public interface OverlapCheckCallback {
-        void onResult(boolean isOverlapping);
-    }
+
     //---------------------------OBSERVE(listen for changes in db and update ui-automatically through livedata)---------------------
     public LiveData<TripEntity> observeActiveTrip(String userId) {
         return tripDao.observeActiveTrip(userId);
@@ -78,13 +76,7 @@ public class TripRepository {
         dbExecutor.execute(() -> tripItemDao.deleteItem(userId, tripId, itemId));
     }
 
-    public void checkExistsByUriAsync(String userId, String tripId, String localUri, ExistsCallback callback) {
-        dbExecutor.execute(() -> {
-            int count = tripItemDao.countByTripAndLocalUri(userId, tripId, localUri);
-            boolean exists = count > 0;
-            callback.onResult(exists);
-        });
-    }
+
 
     public void updateTripTitle(String userId, String tripId, String newTitle) {
         dbExecutor.execute(() -> tripDao.updateTripTitle(userId, tripId, newTitle));
