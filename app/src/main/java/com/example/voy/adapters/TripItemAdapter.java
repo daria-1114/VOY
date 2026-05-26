@@ -29,6 +29,7 @@ import com.example.voy.R;
 import com.example.voy.data.entities.TripItemEntity;
 import com.example.voy.data.repository.TripRepository;
 import com.example.voy.enums.TripItemType;
+import com.example.voy.network.GeminiManager;
 import com.example.voy.viewHolders.AudioViewHolder;
 import com.example.voy.viewHolders.PhotoViewHolder;
 import com.example.voy.viewHolders.StepsViewHolder;
@@ -84,11 +85,7 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
         this.listener = listener;
         this.savedListener = savedListener;
 
-        GenerativeModel generativeModel = new GenerativeModel(
-                "gemini-flash-latest",
-                BuildConfig.GEMINI_API_KEY
-        );
-        this.model = GenerativeModelFutures.from(generativeModel);
+        this.model = GeminiManager.getInstance().getModel();
     }
     // -------------------------------------------------------------------------
     // RecyclerView overrides

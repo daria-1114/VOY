@@ -128,6 +128,9 @@ public class TripRepository {
     public void insertLandmark(LandmarkEntity landmark){
         dbExecutor.execute(() -> landmarkDao.insert(landmark));
     }
+    public void updateLandmarkCoordinates(String landmarkId, double lat, double lng) {
+        dbExecutor.execute(() -> landmarkDao.updateCoordinates(landmarkId, lat, lng));
+    }
     public LiveData<List<LandmarkEntity>> observeLandmarks(String tripId){
         return landmarkDao.observeForTrip(tripId);
     }

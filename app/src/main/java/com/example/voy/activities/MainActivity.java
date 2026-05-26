@@ -251,9 +251,16 @@ public class MainActivity extends AppCompatActivity {
                         "Rome Mock Trip",
                         userId
                 );
+                serviceStartedByUi = true;
+                mockTripStartedByUi = true;
                 mainViewModel.insertTrip(trip);
                 new android.os.Handler(getMainLooper()).postDelayed(() -> {
-                    startMockTripService(newTripId, userId, now);
+                    Intent serviceIntent = new Intent(MainActivity.this, TripForegroundService.class);
+                    serviceIntent.setAction(TripForegroundService.ACTION_START_MOCK);
+                    serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_ID, newTripId);
+                    serviceIntent.putExtra(TripForegroundService.EXTRA_USER_ID, userId);
+                    serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_START_TIME, now);
+                    ContextCompat.startForegroundService(MainActivity.this, serviceIntent);
                 }, 300);
             });
         });
@@ -387,16 +394,7 @@ public class MainActivity extends AppCompatActivity {
         ContextCompat.startForegroundService(this, serviceIntent);
         serviceStartedByUi = true;
     }
-    private void startMockTripService(@NonNull String tripId, @NonNull String userId, long startTime){
-        if(mockTripStartedByUi) return;
-        Intent serviceIntent = new Intent(this, TripForegroundService.class);
-        serviceIntent.setAction(TripForegroundService.ACTION_START_MOCK);
-        serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_ID, tripId);
-        serviceIntent.putExtra(TripForegroundService.EXTRA_USER_ID, userId);
-        serviceIntent.putExtra(TripForegroundService.EXTRA_TRIP_START_TIME, startTime);
-        ContextCompat.startForegroundService(this, serviceIntent);
-        mockTripStartedByUi = true;
-    }
+
     private void updateFabUi(TripEntity trip) {
 
         if (trip == null) {

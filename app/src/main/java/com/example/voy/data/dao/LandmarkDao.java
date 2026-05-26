@@ -14,8 +14,10 @@ import java.util.List;
 public interface LandmarkDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     void insert(LandmarkEntity landmarkEntity);
+    @Query("UPDATE landmarks SET lat = :lat, lng = :lng WHERE id = :id")
+    void updateCoordinates(String id, double lat, double lng);
 
-    @Query("SELECT * FROM landmarks WHERE tripId = :tripId ORDER BY createdAt ASC")
+    @Query("SELECT * FROM landmarks WHERE tripId = :tripId ORDER BY dayNumber ASC, createdAt ASC")
     LiveData<List<LandmarkEntity>> observeForTrip(String tripId);
 
     @Query("SELECT * FROM landmarks WHERE tripId= :tripId AND isVisited = 0 ")
