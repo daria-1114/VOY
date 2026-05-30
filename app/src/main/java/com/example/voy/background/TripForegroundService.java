@@ -268,8 +268,12 @@ public class TripForegroundService extends Service {
         }
         stopCapture();
         locationManager.stop();
-        executor.shutdownNow();
-        proximityExecutor.shutdownNow();
+        if (executor != null && !executor.isShutdown()) {
+            executor.shutdownNow();
+        }
+        if (proximityExecutor != null && !proximityExecutor.isShutdown()) {
+            proximityExecutor.shutdownNow();
+        }
     }
 
     @Nullable
@@ -476,7 +480,21 @@ public class TripForegroundService extends Service {
         stopCapture();
         locationManager.stop();
         stopForeground(true);
-        stopSelf();//completely destroys this instance of the service
+        if (userId != null && tripId != null && executor != null && !executor.isShutdown()) {
+            long finalEndTime = (tripEndTimeMs > 0) ? tripEndTimeMs : System.currentTimeMillis();
+
+            executor.submit(() -> {
+                try {
+                    tripRepository.finishTrip(userId, tripId, finalEndTime);
+                    Log.d(TAG, "Trip marked as finished in DB.");
+                } finally {
+                    executor.shutdown();
+                    stopSelf();
+                }
+            });
+        } else {
+            stopSelf();
+        }
     }
     // Mock trip — reads res/raw/mock_trip.json, inserts into Room
     private void runMockTrip(String simUserId, String simTripId, long simStartMs) {

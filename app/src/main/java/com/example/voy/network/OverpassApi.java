@@ -23,7 +23,7 @@ public class OverpassApi {
         new Thread(() -> {
             try {
                 String query =
-                        "[out:json][timeout:10];" +
+                        "[out:json][timeout:30];" +
                                 "(" +
                                 "  node[\"name:en\"=\"" + landmarkName + "\"][\"wikidata\"];" +
                                 "  way[\"name:en\"=\""  + landmarkName + "\"][\"wikidata\"];" +
@@ -37,9 +37,16 @@ public class OverpassApi {
                 HttpURLConnection connection =
                         (HttpURLConnection) new URL(urlStr).openConnection();
                 connection.setRequestMethod("GET");
-                connection.setConnectTimeout(10_000);
-                connection.setReadTimeout(10_000);
-
+                connection.setConnectTimeout(30_000);
+                connection.setReadTimeout(30_000);
+                int responseCode = connection.getResponseCode();
+                if (responseCode != 200) {
+                    Log.e(TAG, "Server returned HTTP " + responseCode + " for: " + landmarkName);
+                    if (callback != null) {
+                        callback.onNotFound();
+                    }
+                    return;
+                }
                 InputStream is = connection.getInputStream();
                 byte[] buffer = new byte[4096];
                 StringBuilder sb = new StringBuilder();

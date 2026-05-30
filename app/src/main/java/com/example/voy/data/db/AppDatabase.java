@@ -18,7 +18,7 @@ import com.example.voy.data.entities.TripItemEntity;
 
 @Database(
         entities = {TripEntity.class, TripItemEntity.class, LandmarkEntity.class},
-        version = 4,
+        version = 5,
         exportSchema = false
 )
 @TypeConverters({TripItemTypeConverter.class, StringListConverter.class})
