@@ -73,10 +73,23 @@ public class AttachmentAdapter extends RecyclerView.Adapter<AttachmentAdapter.Vi
 
         // Tap to open
         holder.itemView.setOnClickListener(v -> {
+            Uri openUri = uri;
+            if ("file".equals(uri.getScheme())) {
+                try {
+                    openUri = androidx.core.content.FileProvider.getUriForFile(
+                            v.getContext(), "com.example.voy.fileprovider",
+                            new java.io.File(uri.getPath()));
+                } catch (Exception e) { return; }
+            }
             Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(uri);
+            intent.setDataAndType(openUri,
+                    v.getContext().getContentResolver().getType(openUri));  // give the viewer a MIME type
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            v.getContext().startActivity(intent);
+            try {
+                v.getContext().startActivity(intent);
+            } catch (android.content.ActivityNotFoundException e) {
+                // no app installed to open this type — don't crash
+            }
         });
 
         // Remove button only in edit mode

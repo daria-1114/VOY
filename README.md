@@ -40,7 +40,7 @@ TO-DO:
 
 - ~~create mock trip~~
 - ~~fix the location not changing for the emulator~~
-- keyboard in login page fix on actual phone
+- ~~keyboard in login page fix on actual phone~~
 - do something about audio not being captured 
 - ~~make play buttons responsive for audio and video~~
 - ~~fix audio card~~
@@ -54,7 +54,7 @@ TO-DO:
 - ~~location service updating every 30 min and then shuts off~~
 - date and hour of pictures
 - ~~chapters per day in the beginning~~
-- summary per day
+- ~~summary per day~~
 - ~~days being independent from steps~~
 - clean up the app
 - ~~save items to app's internal storage so that the AI will always be able to reach them and not be based on android:requestLegacyExternalStorage="true", which is deprecated.~~
@@ -76,7 +76,7 @@ TO-DO:
 - overpass query fail
 - ~~the landmark recommendation button should be unavailable for ended trips and mock trips~~
 - tapping on an item should do nothing
-- mock trip media not showing up on devices
+- ~~mock trip media not showing up on devices~~
 
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours

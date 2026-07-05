@@ -437,6 +437,7 @@ public class TravelActivity extends AppCompatActivity {
                 intent.putExtra(Intent.EXTRA_MIME_TYPES,
                         new String[]{"image/*", "application/pdf"});
                 intent.addCategory(Intent.CATEGORY_OPENABLE);
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
                 startActivityForResult(intent, REQ_PICK_ATTACHMENT);
         }
 
@@ -449,10 +450,22 @@ public class TravelActivity extends AppCompatActivity {
                         && data.getData() != null) {
 
                         Uri uri = data.getData();
-                        // Persist permission so we can read it later
-                        String internalUri = MediaCloner.cloneToInternal(this, uri, ".pdf");
+                        String mime = getContentResolver().getType(uri);
+                        String ext = "application/pdf".equals(mime) ? ".pdf"
+                                : (mime != null && mime.startsWith("image/")) ? ".jpg"
+                                : ".bin";
+                        Toast.makeText(this, "Adding attachment…", Toast.LENGTH_SHORT).show();
 
-                        travelViewModel.addAttachment(userId, tripId,internalUri);
+                        new Thread(() -> {
+                                String internalUri = MediaCloner.cloneToInternal(this, uri, ext);
+                                runOnUiThread(() -> {
+                                        if (internalUri == null) {
+                                                Toast.makeText(this, "Couldn't add attachment.", Toast.LENGTH_SHORT).show();
+                                                return;
+                                        }
+                                        travelViewModel.addAttachment(userId, tripId, internalUri);
+                                });
+                        }).start();
                 }
         }
 
