@@ -67,7 +67,8 @@
         android:layout_height="wrap_content"
         android:layout_marginHorizontal="16dp"
         android:layout_marginBottom="8dp"
-        android:text="Auto-Fill with AI" />
+        android:text="Auto-Fill with AI"
+        android:visibility="gone"/>
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerLandmarks"
         android:layout_width="match_parent"

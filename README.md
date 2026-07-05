@@ -64,16 +64,19 @@ TO-DO:
 - ~~the foreground service should ask for location whenever a new picture is inserted~~ 
 - ~~add everything in JSON whenever items are scanned~~
 - ~~gps estimated steps based only on step sensor~~
-- request ignore battery optimizations & workmanager to periodically check if the service is still running
+- ~~request ignore battery optimizations & workmanager to periodically check if the service is still running~~
 - ~~duplicate items~~
-- delete attachments
+- fix attachments
 - add permissions for alarms and schedules
-- add ai for trip recommendations
+- ~~add ai for trip recommendations~~
 - do something about the day cards
 - day cards inserted twice!!
 - timestamp for daycards bug fix
 - pictures inserted twice after restart bug 
 - overpass query fail
+- the landmark recommendation button should be unavailable for ended trips and mock trips
+- tapping on an item should do nothing
+- mock trip media not showing up on devices
 
 THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
 the service is only location because dataSync kills the service after 6 hours

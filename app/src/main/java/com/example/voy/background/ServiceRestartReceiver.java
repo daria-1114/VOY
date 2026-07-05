@@ -83,7 +83,7 @@ public class ServiceRestartReceiver extends BroadcastReceiver {
         TripCaptureStateStore.State state = TripCaptureStateStore.load(context);
         if (!state.isValid()) return;
 
-        Log.d(TAG, "Restarting TripForegroundService after system memory kill clearance");
+        Log.d(TAG, "Restarting TripForegroundService after system memory kill");
         TripCaptureStateStore.markNeedsResume(context, true);
 
         Intent serviceIntent = new Intent(context, TripForegroundService.class);

@@ -209,22 +209,14 @@ public class TravelActivity extends AppCompatActivity {
                                         }
                                 }
                         }
-                        if (currentTrip == null || currentTrip.endTime == null || currentTrip.endTime <= 0 || hasAiLandmarks) {
-                                btnAiSuggest.setVisibility(View.GONE);
-                        } else {
-                                btnAiSuggest.setVisibility(View.VISIBLE);
-                        }
+                        btnAiSuggest.setVisibility(showAiSuggest(hasAiLandmarks) ? View.VISIBLE : View.GONE);
                 });
                 btnAdd.setOnClickListener(v ->
                         tilInput.setVisibility(
                                 tilInput.getVisibility() == View.GONE
                                         ? View.VISIBLE : View.GONE)
                 );
-                if (currentTrip == null || currentTrip.endTime == null || currentTrip.endTime <= 0) {
-                        btnAiSuggest.setVisibility(View.GONE);
-                } else {
-                        btnAiSuggest.setVisibility(View.VISIBLE);
-                }
+
                 btnAiSuggest.setOnClickListener(v ->{
                         if(currentTrip == null) return;
                         String city = currentTrip.title != null && !currentTrip.title.isEmpty() ? currentTrip.title : "this city";
@@ -290,6 +282,13 @@ public class TravelActivity extends AppCompatActivity {
                 });
 
                 sheet.show();
+        }
+        private boolean showAiSuggest(boolean hasAiLandmarks){
+                if(hasAiLandmarks) return false;
+                if (currentTrip == null) return false;
+                if(currentTrip.endTime == null || currentTrip.endTime <= 0) return false;
+                if(currentTrip.endTime <= System.currentTimeMillis()) return false;
+                return true;
         }
 
         private void showItineraryApprovalDialog(String city, JSONArray landmarks) {
