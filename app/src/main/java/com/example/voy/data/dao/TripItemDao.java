@@ -35,4 +35,13 @@ public interface TripItemDao {
 
     @Query("UPDATE trip_items SET notes = :notes WHERE id = :itemId")
     void updateNotes(String itemId, String notes);
+
+    @Query("UPDATE trip_items SET title = :title, metadataJson = :metadataJson WHERE id= :itemId")
+    void updateStepsCard(String itemId, String title, String metadataJson);
+
+    @Query("SELECT metadataJson FROM trip_items WHERE id =:itemId ")
+    String getMetadataJson(String itemId);
+
+    @Query("SELECT COUNT(*) FROM trip_items WHERE tripId = :tripId AND mediaStoreId = :mediaStoreId AND mediaStoreId !=0")
+    int countByMediaStoreId(String tripId, long mediaStoreId);
 }

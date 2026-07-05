@@ -74,7 +74,7 @@ TO-DO:
 - timestamp for daycards bug fix
 - pictures inserted twice after restart bug 
 - overpass query fail
-- the landmark recommendation button should be unavailable for ended trips and mock trips
+- ~~the landmark recommendation button should be unavailable for ended trips and mock trips~~
 - tapping on an item should do nothing
 - mock trip media not showing up on devices
 

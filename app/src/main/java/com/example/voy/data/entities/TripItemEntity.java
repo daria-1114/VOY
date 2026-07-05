@@ -18,7 +18,7 @@ foreignKeys = @ForeignKey(
         childColumns = "tripId",
         onDelete = CASCADE
 ),indices = {
-        @Index(value = {"tripId", "localUri"}, unique = true),
+        @Index(value = {"tripId", "mediaStoreId"}),
         @Index("userId")
 })
 public class TripItemEntity {
@@ -43,6 +43,7 @@ public class TripItemEntity {
     public String metadataJson;
     @Nullable
     public String notes;
+    public long mediaStoreId;
 
     public TripItemEntity( @NonNull String id,
                            @NonNull String tripId,
@@ -66,5 +67,6 @@ public class TripItemEntity {
         this.tripId = tripId;
         this.type = type;
         this.userId = userId;
+        this.mediaStoreId = 0;
     }
 }

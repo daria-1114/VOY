@@ -290,6 +290,10 @@ public class TripForegroundService extends Service {
         mediaScanner = new MediaScanner(getApplicationContext(), scannedItem -> {
             String originalUri = scannedItem.uri.toString();
             if (writtenUris.contains(originalUri)) return;
+            if (tripRepository.hasMediaStoreId(tripId, scannedItem.mediaStoreId)){
+                writtenUris.add(originalUri);
+                return;
+            }
             writtenUris.add(originalUri);
             locationManager.requestCurrentLocation(location ->{
                 Double lat = null;
@@ -317,6 +321,7 @@ public class TripForegroundService extends Service {
                         null,
                         scannedItem.buildMetadataJson()
                 );
+                item.mediaStoreId = scannedItem.mediaStoreId;
                 tripRepository.insertTripItem(item);
 
                 if (tripJsonWriter != null) {
@@ -404,55 +409,14 @@ public class TripForegroundService extends Service {
         stepListener = new SensorEventListener()  {
                 @Override
                 public void onSensorChanged(SensorEvent event) {
-                    int totalSteps = (int) event.values[0];
-
-                    if (stepCounterBaseline < 0) {
-                        stepCounterBaseline = totalSteps;
-                        return;
-                    }
-
-                    int currentSteps = totalSteps - stepCounterBaseline;
-
+                    int rawSensorTotal = (int) event.values[0];
                     long elapsedMs = System.currentTimeMillis() - tripStartTimeMs;
-                    long dayOffset = elapsedMs / TimeUnit.HOURS.toMillis(24);
+                    long dayOffset = elapsedMs/TimeUnit.HOURS.toMillis(24);
+                    String dayLabel = "Day "+ (dayOffset + 1);
+                    String stepsId = "steps_" + tripId + "_" + dayOffset;
 
-                    if (dayOffset != lastStepDayOffset) {
-                        lastStepDayOffset = dayOffset;
-                        stepBaselineForDay = currentSteps;
-                        lastSavedSteps = 0;
-                    }
-
-                    int stepsToday = currentSteps - stepBaselineForDay;
-
-                    if (stepsToday - lastSavedSteps < 1000) return;
-
-                    lastSavedSteps = stepsToday;
-
-                    String dayLabel = "Day " + (dayOffset + 1);
-
-                    TripItemEntity stepsItem = new TripItemEntity(
-                            UUID.randomUUID().toString(),
-                            tripId,
-                            userId,
-                            TripItemType.STEPS,
-                            System.currentTimeMillis(),
-                            null,
-                            null,
-                            null,
-                            null,
-                            dayLabel + " — " + currentSteps + " steps",
-                            buildStepsMeta(currentSteps, dayLabel)
-                    );
-
-                    tripRepository.insertTripItem(stepsItem);
-
-                    if (tripJsonWriter != null) {
-                        tripJsonWriter.append(stepsItem);
-                    }
-
-                    Log.d(TAG, "Steps updated: " + currentSteps);
+                    tripRepository.upsertStepsForDay(stepsId, tripId, userId, dayLabel, System.currentTimeMillis(), rawSensorTotal);
                 }
-
                 @Override
                 public void onAccuracyChanged(android.hardware.Sensor sensor, int accuracy) {}
             };
@@ -589,7 +553,7 @@ public class TripForegroundService extends Service {
                         null,
                         null,
                         null,
-                        dayLabel + " — " + steps + " steps",
+                        dayLabel + " - " + steps + " steps",
                         buildStepsMeta(steps, dayLabel)
                 );
                 tripRepository.insertTripItem(stepsEntity);
@@ -660,6 +624,7 @@ public class TripForegroundService extends Service {
             JSONObject obj = new JSONObject();
             obj.put("steps", steps);
             obj.put("dayLabel", dayLabel);
+            obj.put("baselineCounter", 0);
             return obj.toString();
         } catch (Exception e) {
             return null;
