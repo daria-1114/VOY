@@ -164,9 +164,10 @@ public class TripForegroundService extends Service {
                         for(int i = 0; i < totalDays; i++){
                             int dayNumber = i+1;
                             String dayLabel = "Day " + dayNumber;
+                            String dayId = "day_" + tripId + "_" + i;
                             long dayTimestamp = tripStartTimeMs + (i * TimeUnit.HOURS.toMillis(24));
                             TripItemEntity dayEntity = new TripItemEntity(
-                                    UUID.randomUUID().toString(),
+                                    dayId,
                                     tripId, userId,
                                     TripItemType.DAY,
                                     dayTimestamp,
@@ -347,9 +348,9 @@ public class TripForegroundService extends Service {
                         if (dayOffset != lastDayCardOffset) {
                             lastDayCardOffset = dayOffset;
                             String dayLabel = "Day " + (dayOffset + 1);
-
+                            String dayId = "day_" + tripId + "_" + dayOffset;
                             TripItemEntity dayEntity = new TripItemEntity(
-                                    UUID.randomUUID().toString(),
+                                    dayId,
                                     tripId, userId,
                                     TripItemType.DAY,
                                     System.currentTimeMillis(),
@@ -461,7 +462,7 @@ public class TripForegroundService extends Service {
             stopSelf();
         }
     }
-    // Mock trip — reads res/raw/mock_trip.json, inserts into Room
+
     private void runMockTrip(String simUserId, String simTripId, long simStartMs) {
         Log.d(TAG, "Mock trip starting for tripId=" + simTripId);
         try {
@@ -473,6 +474,7 @@ public class TripForegroundService extends Service {
                 JSONObject day       = days.getJSONObject(d);
                 int        dayNumber = day.getInt("dayNumber");
                 String     dayLabel  = day.getString("label");
+                String dayId = "day_" + simTripId + "_" + (dayNumber - 1);
                 int        steps     = day.getInt("steps");
                 JSONArray  items     = day.getJSONArray("items");
 
@@ -483,7 +485,7 @@ public class TripForegroundService extends Service {
                 long dayStartTimestampMs = simStartMs + dayStartOffsetMs;
 
                 TripItemEntity dayEntity = new TripItemEntity(
-                        UUID.randomUUID().toString(),
+                        dayId,
                         simTripId,
                         simUserId,
                         TripItemType.DAY,
