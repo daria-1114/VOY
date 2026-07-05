@@ -28,7 +28,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
@@ -52,7 +54,6 @@ public class TripForegroundService extends Service {
     private static final String CHANNEL_ID  = "trip_capture_channel";
     private static final int    NOTIF_ID    = 101;
     private static final String TAG         = "TripForegroundService";
-    private static final String MOCK_FOLDER = "/sdcard/Voy/MockTrip/";
 
     // Core
     private TripRepository  tripRepository;
@@ -506,14 +507,22 @@ public class TripForegroundService extends Service {
                     long timestampMs = simStartMs + dayStartOffsetMs
                             + (intervalMs * i);
 
-                    String filePath = MOCK_FOLDER + filename;
-                    File mockFile = new File(filePath);
-                    Uri mockUri = Uri.fromFile(mockFile);
-                    String extension = filename.contains(".") ? filename.substring(filename.lastIndexOf(".")) : ".jpg";
-                    String internalUriStirng  = MediaCloner.cloneToInternal(
-                            getApplicationContext(),
-                            mockUri,
-                            extension);
+                    String extension = filename.contains(".") ? filename.substring(filename.lastIndexOf(".")) : ".jpeg";
+                    File temporary = new File(getCacheDir(), filename);
+                    try (InputStream inputStream = getAssets().open("mock_trip/" + filename);
+                    OutputStream outputStream = new FileOutputStream(temporary)) {
+                        byte[] buffer = new byte[8192];
+                        int n;
+                        while((n = inputStream.read(buffer)) != -1){
+                            outputStream.write(buffer, 0, n);
+                        }
+                    }catch (Exception e){
+                        Log.e(TAG, "Missing mock asset: " + filename, e);
+                        continue;
+                    }
+                    Uri mockUri = Uri.fromFile(temporary);
+                    String internalUriString = MediaCloner.cloneToInternal(getApplicationContext(), mockUri, extension);
+                    temporary.delete();
 
                     String metadataJson = buildMockMetadata(
                             type, filename, landmark);
@@ -524,7 +533,7 @@ public class TripForegroundService extends Service {
                             simUserId,
                             type,
                             timestampMs,
-                            internalUriStirng,
+                            internalUriString,
                             null,
                             lat,
                             lng,
