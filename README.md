@@ -72,7 +72,7 @@ TO-DO:
 - do something about the day cards
 - day cards inserted twice!!
 - timestamp for daycards bug fix
-- pictures inserted twice after restart bug 
+- ~~pictures inserted twice after restart bug~~ 
 - overpass query fail
 - ~~the landmark recommendation button should be unavailable for ended trips and mock trips~~
 - tapping on an item should do nothing
