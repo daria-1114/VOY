@@ -13,6 +13,7 @@ import com.example.voy.data.db.AppDatabase;
 import com.example.voy.data.entities.LandmarkEntity;
 import com.example.voy.data.entities.TripEntity;
 import com.example.voy.data.entities.TripItemEntity;
+import com.example.voy.enums.TripItemType;
 
 import org.json.JSONObject;
 
@@ -112,6 +113,31 @@ public class TripRepository {
             tripDao.updateAttachments(userId, tripId, list);
         });
     }
+    public void upsertStepsForDay(String itemId, String tripId, String userId, String dayLabel, long timestamp, int rawSensorTotal){
+        dbExecutor.execute(()->{
+            String json = tripItemDao.getMetadataJson(itemId);
+            int baseline;
+            int stepsToday;
+            try{
+                if(json == null){
+                    baseline = rawSensorTotal;
+                }else{
+                    baseline = new JSONObject(json).optInt("baselineCounter", rawSensorTotal);
+                    if(rawSensorTotal < baseline) baseline = rawSensorTotal;
+                }
+            } catch (Exception e) {
+                baseline = rawSensorTotal;
+            }
+            stepsToday = Math.max(0, rawSensorTotal - baseline);
+            String title = dayLabel +" - " + stepsToday + " steps";
+            String meta = buildStepsMeta(stepsToday, dayLabel, baseline);
+            TripItemEntity card = new TripItemEntity(
+                    itemId, tripId, userId, TripItemType.STEPS,
+                    timestamp, null, null, null, null, title, meta);
+            tripItemDao.insertItem(card);
+            tripItemDao.updateStepsCard(itemId, title, meta);
+        });
+    }
     public LiveData<TripEntity> observeTrip(String userId, String tripId) {
         return tripDao.observeTrip(userId, tripId);
     }
@@ -143,6 +169,20 @@ public class TripRepository {
     }
     public List<LandmarkEntity> getUnvisitedLandmarks(String tripId) {
         return landmarkDao.getUnvisitedForTrip(tripId);
+    }
+    private String buildStepsMeta(int steps, String dayLabel, int baselineCounter) {
+        try {
+            JSONObject obj = new JSONObject();
+            obj.put("steps", steps);
+            obj.put("dayLabel", dayLabel);
+            obj.put("baselineCounter", baselineCounter);
+            return obj.toString();
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    public boolean hasMediaStoreId(String tripId, long mediaStoreId){
+        return tripItemDao.countByMediaStoreId(tripId, mediaStoreId) > 0;
     }
     public interface ExistsCallback {
         void onResult(boolean exists);
