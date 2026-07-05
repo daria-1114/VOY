@@ -16,6 +16,7 @@ import java.util.concurrent.Executors;
 
 public class GeminiApi {
     private static final String TAG ="GeminiApi";
+    private static final Executor EXECUTOR = Executors.newSingleThreadExecutor();
     public interface OnResult {
         void onSuccess(JSONArray landmarks);
         void onError(String error);
@@ -23,12 +24,14 @@ public class GeminiApi {
     public static void generateItinerary(String city, int totalDays, OnResult callback){
         try{
             GenerativeModelFutures model = GeminiManager.getInstance().getModel();
-            String prompt = "Suggest 2 famous landmarks to visit per day for a " + totalDays + "-day trip to " + city + ". " +
-                    "Return ONLY a valid JSON array of objects without any markdown formatting. " +
-                    "Each object must have exactly two keys: 'name' (string) and 'dayNumber' (integer).";
+            String prompt = "Suggest 2 famous landmarks to visit per day for a " + totalDays
+                    + "-day trip to " + city + ". "
+                    + "Use each landmark's exact official name as it appears in OpenStreetMap, "
+                    + "without a leading 'The' and without translating it. "
+                    + "Return ONLY a valid JSON array of objects without any markdown formatting. "
+                    + "Each object must have exactly two keys: 'name' (string) and 'dayNumber' (integer).";
             Content content = new Content.Builder().addText(prompt).build();
             ListenableFuture<GenerateContentResponse> response = model.generateContent(content);
-            Executor executor = Executors.newSingleThreadExecutor();
             response.addListener(() ->{
                 try {
                     String aiText = response.get().getText();
@@ -41,7 +44,7 @@ public class GeminiApi {
                     Log.e(TAG, "Failed to parse JSON from AI: ", e);
                     new Handler(Looper.getMainLooper()).post(() -> callback.onError(e.getMessage()));
                 }
-            }, executor);
+            }, EXECUTOR);
         } catch (Exception e) {
             Log.e(TAG, "Gemini Request Failed", e);
             new Handler(Looper.getMainLooper()).post(() -> callback.onError(e.getMessage()));        }
