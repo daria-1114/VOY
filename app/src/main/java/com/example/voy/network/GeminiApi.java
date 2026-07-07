@@ -26,7 +26,7 @@ public class GeminiApi {
             GenerativeModelFutures model = GeminiManager.getInstance().getModel();
             String prompt = "Suggest 2 famous landmarks to visit per day for a " + totalDays
                     + "-day trip to " + city + ". "
-                    + "Use each landmark's exact official name as it appears in OpenStreetMap, "
+                    + "Use each landmark's exact official, English name as it appears in OpenStreetMap, "
                     + "without a leading 'The' and without translating it. "
                     + "Return ONLY a valid JSON array of objects without any markdown formatting. "
                     + "Each object must have exactly two keys: 'name' (string) and 'dayNumber' (integer).";

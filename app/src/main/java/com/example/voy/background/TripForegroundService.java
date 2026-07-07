@@ -54,20 +54,14 @@ public class TripForegroundService extends Service {
     private static final String CHANNEL_ID  = "trip_capture_channel";
     private static final int    NOTIF_ID    = 101;
     private static final String TAG         = "TripForegroundService";
-
-    // Core
     private TripRepository  tripRepository;
     private ExecutorService executor;
     private Future<?>       scanLoopFuture;
     private volatile boolean running = false;
-
-    // Trip state
     private String userId;
     private String tripId;
     private long   tripStartTimeMs;
     private long   lastScanDateAddedSec;
-
-    // Helpers
     private TripLocationManager  locationManager;
     private MediaScanner     mediaScanner;
     private TripJsonWriter   tripJsonWriter;
@@ -80,14 +74,8 @@ public class TripForegroundService extends Service {
     private int stepBaselineForDay = 0;
     private final java.util.Set<String> writtenUris = new java.util.HashSet<>();
     private long tripEndTimeMs = -1;
-    //landmarks
     private static final float VISITED_RADIUS_METERS = 200f;
     private ExecutorService proximityExecutor;
-
-    // -------------------------------------------------------------------------
-    // Lifecycle
-    // -------------------------------------------------------------------------
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -283,7 +271,7 @@ public class TripForegroundService extends Service {
     public IBinder onBind(Intent intent) {
         return null;
     }
-    // Real trip
+
 
     private void startMediaScanLoop() {
         if (running) return;

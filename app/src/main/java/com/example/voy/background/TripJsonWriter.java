@@ -17,7 +17,6 @@ public class TripJsonWriter {
     private static final String TAG = "TripJsonWriter";
     private final File outputFile;
     private BufferedWriter writer;
-
     public TripJsonWriter(Context context, String tripId) {
         File tripsDirectory = new File(context.getFilesDir(),"trips");
         if(!tripsDirectory.exists())

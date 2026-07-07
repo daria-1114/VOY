@@ -33,8 +33,6 @@ public class TripRepository {
         this.tripItemDao = db.tripItemDao();
         this.landmarkDao = db.landmarkDao();
     }
-
-    //---------------------------OBSERVE(listen for changes in db and update ui-automatically through livedata)---------------------
     public LiveData<TripEntity> observeActiveTrip(String userId) {
         return tripDao.observeActiveTrip(userId);
     }
@@ -51,7 +49,6 @@ public class TripRepository {
         return tripItemDao.observeRecentItemsForTrip(userId, tripId, limit);
     }
 
-//----------------WRITE(change db)----------------------------------
 
     public void insertTrip(TripEntity trip) {
         dbExecutor.execute(() -> tripDao.insert(trip));
@@ -69,15 +66,9 @@ public class TripRepository {
         dbExecutor.execute(() -> tripItemDao.insertItem(item));
     }
 
-    public void insertTripItems(List<TripItemEntity> items) {
-        dbExecutor.execute(() -> tripItemDao.insertItems(items));
-    }
-
     public void deleteTripItem(String userId, String tripId, String itemId) {
         dbExecutor.execute(() -> tripItemDao.deleteItem(userId, tripId, itemId));
     }
-
-
 
     public void updateTripTitle(String userId, String tripId, String newTitle) {
         dbExecutor.execute(() -> tripDao.updateTripTitle(userId, tripId, newTitle));
@@ -150,7 +141,6 @@ public class TripRepository {
         });
     }
 
-    //LANDMARKS
     public void insertLandmark(LandmarkEntity landmark){
         dbExecutor.execute(() -> landmarkDao.insert(landmark));
     }

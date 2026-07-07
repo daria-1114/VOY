@@ -16,7 +16,6 @@ public class LandmarkEntity {
     public int dayNumber;
     public boolean isVisited;
     public long createdAt;
-
     public LandmarkEntity(@NonNull String id, String tripId, String name,
                           Double lat, Double lng,int dayNumber, boolean isVisited, long createdAt) {
         this.id        = id;

@@ -25,17 +25,14 @@ public class TripItemEntity {
     @PrimaryKey
     @NonNull
     public String id;
-
     @NonNull
     public String tripId;
-
     @NonNull
     public String userId;
     @NonNull
     public TripItemType type;
     public long timestamp;
-    public String localUri;   // content:// or internal file
-
+    public String localUri;
     public String remoteUrl;  // Firebase Storage Url
     public Double lat;
     public Double lng;

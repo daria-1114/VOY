@@ -8,7 +8,6 @@ import android.content.Intent;
 import android.os.Build;
 
 public class TripScheduler {
-    private static final String TAG ="TripScheduler";
     public static final String ACTION_START_PLANNED = "com.example.voy.action.START_PLANNED_TRIP";
     public static final String ACTION_STOP_PLANNED = "com.example.voy.action.STOP_PLANNED_TRIP";
     public static void scheduleTripActivation(Context context, String tripId, String userId, long startMs, long endMs, String tripTitle){
@@ -19,7 +18,7 @@ public class TripScheduler {
         intentAlarm.putExtra("startTime", startMs);
         intentAlarm.putExtra("endTime", endMs);
         intentAlarm.putExtra("tripTitle", tripTitle);
-        int requestCode = tripId.hashCode();// unique code using the trip id string's hashcode so multiple future vacations dont't overlap
+        int requestCode = tripId.hashCode();
         PendingIntent pendingIntent = PendingIntent.getBroadcast(
                 context,
                 requestCode,

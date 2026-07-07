@@ -13,7 +13,6 @@ public class BootReceiver extends BroadcastReceiver {
 
         TripCaptureStateStore.State state = TripCaptureStateStore.load(context);
         if (!state.isValid()) return;
-        // just keeping the state, the service restarts when the app is opened again by the user -- because of restricitons on newer android versions
         TripCaptureStateStore.markNeedsResume(context, true);
     }
 }

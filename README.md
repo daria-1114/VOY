@@ -56,7 +56,7 @@ TO-DO:
 - ~~chapters per day in the beginning~~
 - ~~summary per day~~
 - ~~days being independent from steps~~
-- clean up the app
+- ~~clean up the app~~
 - ~~save items to app's internal storage so that the AI will always be able to reach them and not be based on android:requestLegacyExternalStorage="true", which is deprecated.~~
 - ~~high demand error for gemini fix for audio~~ 
 
@@ -66,12 +66,11 @@ TO-DO:
 - ~~gps estimated steps based only on step sensor~~
 - ~~request ignore battery optimizations & workmanager to periodically check if the service is still running~~
 - ~~duplicate items~~
-- fix attachments
+- ~~fix attachments~~
 - add permissions for alarms and schedules
 - ~~add ai for trip recommendations~~
-- do something about the day cards
-- day cards inserted twice!!
-- timestamp for daycards bug fix
+- ~~day cards inserted twice!!~~
+- ~~timestamp for daycards bug fix~~
 - ~~pictures inserted twice after restart bug~~ 
 - overpass query fail
 - ~~the landmark recommendation button should be unavailable for ended trips and mock trips~~
