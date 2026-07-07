@@ -46,8 +46,7 @@ public class ServiceRestartReceiver extends BroadcastReceiver {
 
             PendingIntent pendingIntent = PendingIntent.getActivity(
                     context, tripId.hashCode(), mainActivityIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-            );
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
             NotificationManager notificationManager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O){
                 NotificationChannel channel = new NotificationChannel(
@@ -79,7 +78,7 @@ public class ServiceRestartReceiver extends BroadcastReceiver {
             context.startService(stopIntent);
             return;
         }
-        // 2.THE ORIGINAL CRASH/LOW-MEMORY SYSTEM RECOVERY FLOW
+        // SYSTEM RECOVERY FLOW
         TripCaptureStateStore.State state = TripCaptureStateStore.load(context);
         if (!state.isValid()) return;
 

@@ -23,7 +23,7 @@ public class TripEntity {
     @Nullable
     public Long endTime;
     @NonNull
-    public String status; //active or finished
+    public String status;
     @ColumnInfo(name = "notes")
     public String notes;
 

@@ -6,7 +6,6 @@
     android:layout_height="wrap_content"
     android:padding="8dp">
 
-    <!-- Media card (left, 68%) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/cardMedia"
         android:layout_width="0dp"
@@ -31,7 +30,6 @@
 
     </com.google.android.material.card.MaterialCardView>
 
-    <!-- Right column: notes card on top, map card on bottom -->
     <LinearLayout
         android:id="@+id/rightColumn"
         android:layout_width="0dp"
@@ -44,7 +42,6 @@
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintWidth_percent="0.32">
 
-        <!-- Notes card (top half) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardNotes"
             android:layout_width="match_parent"
@@ -84,7 +81,6 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Map card (bottom half) -->
         <com.google.android.material.card.MaterialCardView
             android:id="@+id/cardMap"
             android:layout_width="match_parent"

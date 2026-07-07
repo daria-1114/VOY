@@ -52,20 +52,11 @@ import java.util.Locale;
 import java.util.Map;
 
 public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
-
-    // -------------------------------------------------------------------------
-    // View type constants
-    // -------------------------------------------------------------------------
-
     private static final int TYPE_PHOTO = 1;
     private static final int TYPE_VIDEO = 2;
     private static final int TYPE_AUDIO = 3;
     private static final int TYPE_STEPS = 4;
     private static final int TYPE_DAY = 5;
-
-    // -------------------------------------------------------------------------
-    // Fields
-    // -------------------------------------------------------------------------
 
     private final List<TripItemEntity> displayItems = new ArrayList<>();
     private final Map<String, String> placeCache = new HashMap<>();
@@ -87,9 +78,6 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
 
         this.model = GeminiManager.getInstance().getModel();
     }
-    // -------------------------------------------------------------------------
-    // RecyclerView overrides
-    // -------------------------------------------------------------------------
 
     @Override
     public int getItemViewType(int position) {
@@ -309,20 +297,11 @@ public class TripItemAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolde
     public List<TripItemEntity> getItems() {
         return displayItems;
     }
-    // -------------------------------------------------------------------------
-    // Data
-    // -------------------------------------------------------------------------
-
     public void setItems(List<TripItemEntity> newItems) {
         displayItems.clear();
         if (newItems != null) displayItems.addAll(newItems);
         notifyDataSetChanged();
     }
-
-    // -------------------------------------------------------------------------
-    // Helpers
-    // -------------------------------------------------------------------------
-
     public void releaseMediaPlayer() {
         if (mediaPlayer != null) {
             mediaPlayer.release();

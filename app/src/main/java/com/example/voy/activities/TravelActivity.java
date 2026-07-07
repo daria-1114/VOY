@@ -51,32 +51,21 @@ public class TravelActivity extends AppCompatActivity {
         private TravelViewModel travelViewModel;
         private String tripId;
         private String userId;
-
-        // Trip items
         private RecyclerView recyclerView;
         private TripItemAdapter adapter;
-
-        // Attachments
         private RecyclerView recyclerAttachments;
         private AttachmentAdapter attachmentAdapter;
         private LandmarkAdapter landmarkAdapter;
-
-        // Title views
         private TextView tvTripTitle;
         private TextInputLayout tilTripTitle;
         private TextInputEditText etTripTitle;
-
-        // Notes views
         private TextView tvNotes;
         private TextInputLayout tilNotes;
         private TextInputEditText etNotes;
-
-        // Buttons
         private MaterialButton btnEditTrip;
         private MaterialButton btnSaveTripTitle;
         private MaterialButton btnAddAttachment;
         private MaterialButton btnToDoList;
-
         private boolean isEditMode = false;
         private TripEntity currentTrip;
         private LinearLayout chapterContainer;
@@ -87,7 +76,6 @@ public class TravelActivity extends AppCompatActivity {
                 super.onCreate(savedInstanceState);
                 setContentView(R.layout.activity_travel);
 
-                // Toolbar
                 MaterialToolbar toolbar = findViewById(R.id.headerToolbarTravel);
                 toolbar.setNavigationOnClickListener(v -> finish());
                 toolbar.setOnMenuItemClickListener(item -> {
@@ -98,50 +86,37 @@ public class TravelActivity extends AppCompatActivity {
                         return false;
                 });
 
-                // Title views
                 tvTripTitle    = findViewById(R.id.tvTripTitle);
                 tilTripTitle   = findViewById(R.id.tilTripTitle);
                 etTripTitle    = findViewById(R.id.etTripTitle);
-                //chapter card
                 chapterContainer = findViewById(R.id.chapterContainer);
-                // Notes views
                 tvNotes        = findViewById(R.id.tvNotes);
                 tilNotes       = findViewById(R.id.tilNotes);
                 etNotes        = findViewById(R.id.etNotes);
-
-                // Buttons
                 btnEditTrip    = findViewById(R.id.btnEditTrip);
                 btnSaveTripTitle = findViewById(R.id.btnSaveTripTitle);
                 btnAddAttachment = findViewById(R.id.btnAddAttachment);
                 btnToDoList = findViewById(R.id.btnToDoList);
-
                 btnEditTrip.setOnClickListener(v -> enterEditMode());
                 btnSaveTripTitle.setOnClickListener(v -> saveAndExitEditMode());
                 btnToDoList.setOnClickListener(v -> showToDoSheet());
-                // Attachments
                 recyclerAttachments = findViewById(R.id.recyclerAttachments);
                 recyclerAttachments.setLayoutManager(
                         new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
                 attachmentAdapter = new AttachmentAdapter(new ArrayList<>(), isEditMode,
                         uri -> confirmRemoveAttachment(uri));
                 recyclerAttachments.setAdapter(attachmentAdapter);
-
                 btnAddAttachment.setOnClickListener(v -> pickAttachment());
-
-                // Auth
                 userId = FirebaseAuth.getInstance().getCurrentUser() != null
                         ? FirebaseAuth.getInstance().getCurrentUser().getUid()
                         : null;
                 tripId = getIntent().getStringExtra("tripId");
-
                 if (userId == null || tripId == null) {
                         finish();
                         return;
                 }
-
                 travelViewModel = new ViewModelProvider(this).get(TravelViewModel.class);
 
-                // Observe trip entity for title and notes
                 travelViewModel.observeTrip(userId, tripId).observe(this, trip -> {
                         if (trip == null) return;
                         currentTrip = trip;
@@ -156,7 +131,6 @@ public class TravelActivity extends AppCompatActivity {
                         }
                 });
 
-                // Trip items RecyclerView
                 recyclerView = findViewById(R.id.recyclerViewTripItems);
                 LinearLayoutManager llm = new LinearLayoutManager(this);
                 llm.setInitialPrefetchItemCount(4);
@@ -166,7 +140,6 @@ public class TravelActivity extends AppCompatActivity {
                 adapter = new TripItemAdapter(item -> showDeleteDialog(item),
                         (item, notes) -> travelViewModel.updateItemNotes(item.id, notes));
                 recyclerView.setAdapter(adapter);
-
                 travelViewModel.observeAllItemsForTrip(userId, tripId)
                         .observe(this, items -> {
                                 adapter.setItems(items);
@@ -319,21 +292,18 @@ public class TravelActivity extends AppCompatActivity {
                                         String name = obj.getString("name");
                                         int dayNum = obj.getInt("dayNumber");
 
-                                        // 1. Create the landmark with NULL coordinates
                                         LandmarkEntity landmark = new LandmarkEntity(
                                                 UUID.randomUUID().toString(),
                                                 tripId,
                                                 name,
                                                 null, null, // lat/lng are null until Overpass finds them
-                                                dayNum,     // AI assigned day
+                                                dayNum,
                                                 false,
                                                 System.currentTimeMillis()
                                         );
 
-                                        // 2. Insert it immediately so it shows up in the UI
                                         travelViewModel.insertLandmark(landmark);
 
-                                        // 3. Ask Overpass for the exact GPS map coordinates
                                         OverpassApi.fetchCoordinates(name, new OverpassApi.OnResult() {
                                                 @Override
                                                 public void onFound(double lat, double lng) {
@@ -345,8 +315,6 @@ public class TravelActivity extends AppCompatActivity {
                                                 }
                                         });
                                 }
-
-                                // Show success message on main thread
                                 runOnUiThread(() -> Toast.makeText(TravelActivity.this, "Landmarks added!", Toast.LENGTH_SHORT).show());
 
                         } catch (Exception e) {
@@ -360,7 +328,6 @@ public class TravelActivity extends AppCompatActivity {
                         Log.d("TravelActivity", "buildChapterStrip: items is null");
                         return;
                 }
-
                 Log.d("TravelActivity", "buildChapterStrip: total items = " + items.size());
 
 
@@ -386,8 +353,6 @@ public class TravelActivity extends AppCompatActivity {
 
         private void enterEditMode() {
                 isEditMode = true;
-
-                // Show edit fields, hide view fields
                 tvTripTitle.setVisibility(View.GONE);
                 tilTripTitle.setVisibility(View.VISIBLE);
                 etTripTitle.setText(currentTrip != null ? currentTrip.title : "");
@@ -415,7 +380,6 @@ public class TravelActivity extends AppCompatActivity {
                 travelViewModel.updateTripTitle(userId, tripId, newTitle);
                 travelViewModel.updateTripNotes(userId, tripId, newNotes);
 
-                // Update UI
                 tvTripTitle.setText(newTitle);
                 tvNotes.setText(newNotes);
                 tvNotes.setVisibility(!newNotes.isEmpty() ? View.VISIBLE : View.GONE);

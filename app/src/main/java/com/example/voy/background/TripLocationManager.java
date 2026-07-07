@@ -64,12 +64,6 @@ public class TripLocationManager {
     public void stop(){
         Log.d(TAG,"Location Manager stopped");
     }
-    @Nullable
-    public Location getLastLocation(){
-        return lastLocation;
-    }
-
-
     boolean hasPermission() {
         return ContextCompat.checkSelfPermission(context,
                 Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED;

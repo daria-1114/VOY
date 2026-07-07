@@ -197,8 +197,7 @@ public class MainActivity extends AppCompatActivity {
                     return;
                 }
                 if ("ACTIVE".equals(trip.status) && !serviceStartedByUi) {
-
-                    // The database is the source of truth. Boot the service back up!
+                    // restarting the service after device reboot
                     requestTripPermissionsThen(() ->
                             startTripService(
                                     trip.id,
@@ -208,7 +207,7 @@ public class MainActivity extends AppCompatActivity {
                             )
                     );
                 }
-                // Resume capture only when the system/boot told us to resume
+                // Set in BootReceiver
                 boolean needsResume = TripCaptureStateStore.consumeNeedsResume(this);
                 if (needsResume) {
                     requestTripPermissionsThen(() ->
@@ -405,7 +404,7 @@ public class MainActivity extends AppCompatActivity {
         } else if ("PLANNED".equals(trip.status)){
             fabServiceToggle.setText("Cancel Scheduled Trip");
             fabServiceToggle.setIconResource(R.drawable.baseline_not_started_24);
-            fabServiceToggle.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#E65100"))); // Gray out to lock it down
+            fabServiceToggle.setBackgroundTintList(ColorStateList.valueOf(Color.parseColor("#E65100")));
             fabServiceToggle.setEnabled(true);
         } else {
             fabServiceToggle.setText("Stop Trip");
