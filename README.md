@@ -15,7 +15,7 @@ VOY is an Android trip-tracking app that automatically documents your travels. W
    - **Attachments** section
    - Day-by-day tabs with photos, an inline map showing where each photo was taken, and a per-photo notes field
 - **AI Draft** - generates a note/description for a photo using the Gemini API.
-
+  ![alt text](app/src/main/assets/screenshots/Screenshot_1782998769.png)
 ### Planned Vacations
 - Alternative to live tracking: configure a trip in advance via **Configure Your Trip**:
    - Choose between **Live Tracker** and **Planned Vacation** modes
@@ -25,7 +25,7 @@ VOY is an Android trip-tracking app that automatically documents your travels. W
 ### To Do List / Landmarks
 - Add landmarks to visit, organized by day, with checkboxes that get automatically checked off based on the location of the media items.
 - **Auto-Fill with AI** - uses the Gemini API to generate a suggested landmark/itinerary list based on the trip's destination, only for planned vacations.
-
+  ![alt text](app/src/main/assets/screenshots/Screenshot_1782999606.png)
 ### Mock Trip
 - A sample **Mock Trip** (e.g. "Rome Mock Trip") is included so users can preview how a completed trip journal looks - with sample photos, notes, and maps - without needing to travel first.
 
