@@ -15,7 +15,7 @@ VOY is an Android trip-tracking app that automatically documents your travels. W
    - **Attachments** section
    - Day-by-day tabs with photos, an inline map showing where each photo was taken, and a per-photo notes field
 - **AI Draft** - generates a note/description for a photo using the Gemini API.
-  ![alt text](Screenshot_1782998769.png)
+  ![alt text](app/src/main/assets/screenshots/Screenshot_1782998769.png)
 
 ### Planned Vacations
 - Alternative to live tracking: configure a trip in advance via **Configure Your Trip**:
@@ -26,7 +26,7 @@ VOY is an Android trip-tracking app that automatically documents your travels. W
 ### To Do List / Landmarks
 - Add landmarks to visit, organized by day, with checkboxes that get automatically checked off based on the location of the media items.
 - **Auto-Fill with AI** - uses the Gemini API to generate a suggested landmark/itinerary list based on the trip's destination, only for planned vacations.
-  ![alt text](Screenshot_1782999606.png)
+  ![alt text](app\src\main\assets\screenshots\Screenshot_1782999606.png)
 
 ### Mock Trip
 - A sample **Mock Trip** (e.g. "Rome Mock Trip") is included so users can preview how a completed trip journal looks - with sample photos, notes, and maps - without needing to travel first.
@@ -52,4 +52,7 @@ VOY requests the following device permissions to function:
 - AI-powered features (note drafting, itinerary/landmark auto-fill) are powered by the **Gemini API** and are experimental - results are not guaranteed and may occasionally fail or return incomplete output.
 - Gemini API status: currently disabled in Google Cloud Console for this project.
 
-
+## Setup
+- Clone the repo.
+- Copy app/google-services.json.example to app/google-services.json and fill in your own Firebase project values (download the real file from Firebase Console → Project Settings → your app). This file is gitignored and must not be committed.
+- Add your Gemini API key and Maps Static API key to local.properties
