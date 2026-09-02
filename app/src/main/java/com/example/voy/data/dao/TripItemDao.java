@@ -44,4 +44,5 @@ public interface TripItemDao {
 
     @Query("SELECT COUNT(*) FROM trip_items WHERE tripId = :tripId AND mediaStoreId = :mediaStoreId AND mediaStoreId !=0")
     int countByMediaStoreId(String tripId, long mediaStoreId);
+
 }

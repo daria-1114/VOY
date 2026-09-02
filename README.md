@@ -1,101 +1,55 @@
-An Intelligent Mobile Diary - A Mobile App for Activity Logging and Narrative Generation
+# VOY
 
-Name:VOY
-TO-DO:
-1. User Login
-   - ~~LOGIN page~~
-   - ~~FireBase Authentication~~
-   - Real email confirmation- check if the domain exists
-2. Main Page
-   - ~~plus button that lets you add a new diary entry~~
-   - ~~display all finished entries~~
-   - ~~display message if there are no entries~~
-   - ~~user can delete entries(menu button)~~
-   - ~~if clicked on an Entry, go to entry page~~
-   - ~~MenuBar with Maps(?) and UserAccount dropdown-lets user logout~~
-3. Diary Page
-   a)NEW ENTRY
-   - ~~require Media Permissions, Location~~
-   - ~~START button that starts the service~~
-   - friendly UI
-   - explanation message, steps to follow
-   - ~~title required introduced by the user, otherwise untitled trip~~
-   b)ENTRY IN THE MAKING
-   - ~~all pictures captured by the service appear in the entry page~~
-   c)MOCK ENTRY
-   - all pictures are stored (and can be deleted by the user?)
-   - user can add text - description of the vacation in the beginning of the Entry(optional)
-   - button for Narrative Generation
-   
+VOY is an Android trip-tracking app that automatically documents your travels. While active, it runs a foreground service that captures the photos and videos you take, tags each one with the location it was taken at, and organizes everything into a day-by-day trip journal — complete with notes, maps, and AI-assisted features.
 
-# TO DO LIST
+## Features
 
+### Trip Tracking (Live Tracker)
+- Runs as a **foreground service** that monitors and captures multimedia items (photos/videos) taken during the trip.
+- Automatically fetches and attaches the **location** of each captured item.
+- Groups captured media by day, displayed in a day-by-day timeline (Day 1, Day 2, Day 3, ...).
 
-- ~~ability to add notes on a trip in the beginning~~ 
-- ~~add steps(per day)~~
+### Trip Journal
+- Each trip has a dedicated page with:
+   - Editable **trip title** and **notes**
+   - **Attachments** section
+   - Day-by-day tabs with photos, an inline map showing where each photo was taken, and a per-photo notes field
+- **AI Draft** - generates a note/description for a photo using the Gemini API.
+  ![alt text](Screenshot_1782998769.png)
 
-- ~~make a finished entry look more appealing with space for notes and clustered images if they are close to each other(time) and show location for clusters!!!~~
-- ~~user can add tickets manually as pdfs and other media files~~
+### Planned Vacations
+- Alternative to live tracking: configure a trip in advance via **Configure Your Trip**:
+   - Choose between **Live Tracker** and **Planned Vacation** modes
+   - Set a **Destination City**
+   - Select a **calendar date range** for the trip
 
+### To Do List / Landmarks
+- Add landmarks to visit, organized by day, with checkboxes that get automatically checked off based on the location of the media items.
+- **Auto-Fill with AI** - uses the Gemini API to generate a suggested landmark/itinerary list based on the trip's destination, only for planned vacations.
+  ![alt text](Screenshot_1782999606.png)
 
-- ~~create mock trip~~
-- ~~fix the location not changing for the emulator~~
-- ~~keyboard in login page fix on actual phone~~
-- do something about audio not being captured 
-- ~~make play buttons responsive for audio and video~~
-- ~~fix audio card~~
-- db for more than one device
+### Mock Trip
+- A sample **Mock Trip** (e.g. "Rome Mock Trip") is included so users can preview how a completed trip journal looks - with sample photos, notes, and maps - without needing to travel first.
 
-- button for deleting items instead of just clicking on them
-- ~~remove clusters~~
-- pdf documents 
-- ~~text card for each item~~
-- ~~api narrative generation for pictures & video/ audio to text for audio~~
-- ~~location service updating every 30 min and then shuts off~~
-- date and hour of pictures
-- ~~chapters per day in the beginning~~
-- ~~summary per day~~
-- ~~days being independent from steps~~
-- ~~clean up the app~~
-- ~~save items to app's internal storage so that the AI will always be able to reach them and not be based on android:requestLegacyExternalStorage="true", which is deprecated.~~
-- ~~high demand error for gemini fix for audio~~ 
+### Account
+- Email/password **Log In** and **Sign Up**
+- Account **Info** and **Log Out** from the trip list menu
 
-- ~~TO DO list for each trip that is automatically checked off(for landmarks)~~
-- ~~the foreground service should ask for location whenever a new picture is inserted~~ 
-- ~~add everything in JSON whenever items are scanned~~
-- ~~gps estimated steps based only on step sensor~~
-- ~~request ignore battery optimizations & workmanager to periodically check if the service is still running~~
-- ~~duplicate items~~
-- ~~fix attachments~~
-- add permissions for alarms and schedules
-- ~~add ai for trip recommendations~~
-- ~~day cards inserted twice!!~~
-- ~~timestamp for daycards bug fix~~
-- ~~pictures inserted twice after restart bug~~ 
-- overpass query fail
-- ~~the landmark recommendation button should be unavailable for ended trips and mock trips~~
-- tapping on an item should do nothing
-- ~~mock trip media not showing up on devices~~
+## Permissions
 
-THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
-the service is only location because dataSync kills the service after 6 hours
+VOY requests the following device permissions to function:
 
-!! change export schema for the db to true 
+| Permission | Purpose |
+|---|---|
+| Photos & Videos | To detect and display multimedia captured during a trip |
+| Music & Audio | To access audio/media on the device |
+| Alarms & Reminders | Allows the app to schedule a trip for a future time |
+| Location | To tag captured items with the location they were taken at |
+
+## Tech Notes
+
+- Trip media capture relies on a foreground service, so the relevant permissions must be granted for tracking to work correctly in the background.
+- AI-powered features (note drafting, itinerary/landmark auto-fill) are powered by the **Gemini API** and are experimental - results are not guaranteed and may occasionally fail or return incomplete output.
+- Gemini API status: currently disabled in Google Cloud Console for this project.
 
 
-### EXTRA INFO
-
-export trip to json:
-adb pull /sdcard/Android/data/com.example.voy/files/Voy/ D:\Desktop\Voy
-
-sdcard → Android → data → com.example.voy → files → Voy (before)
-
-JSON files internal storage path: **/data/data/com.example.voy/files/trips/**
-
-adb pull /sdcard/Android/data/com.example.voy/files/Voy/trip_<tripId>.json C:\Users\YourUsername\Desktop\ -- only for a specific one
-
-THE STEPS ARE SET TO APPEAR IN THE DIARY AFTER TWO MINUTES FOR TESTING PURPOSES!!!
-the service is only location because dataSync kills the service after 6 hours
-the day lasts only two minutes. change in tripForegroundService.
-
-!! change export schema for the db to true 
